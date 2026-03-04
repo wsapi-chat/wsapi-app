@@ -1,6 +1,6 @@
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache gcc musl-dev
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /build
 
@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux go build -o /build/server ./cmd/server
+RUN GOOS=linux go build -o /build/server ./cmd/server
 
 FROM alpine:3.20
 

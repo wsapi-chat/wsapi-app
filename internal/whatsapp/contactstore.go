@@ -22,24 +22,17 @@ type ContactRecord struct {
 // are automatically purged when a device is deleted or logged out.
 type ContactStore struct {
 	db      *sql.DB
-	dialect string // "sqlite3" or "postgres"
+	dialect string // "sqlite" or "postgres"
 }
 
 // OpenContactStore opens a connection to the whatsmeow database for the
 // wsapi_contacts table. MigrateCustomTables must be called before this.
 func OpenContactStore(driver, dsn string) (*ContactStore, error) {
-	switch driver {
-	case "sqlite":
-		driver = "sqlite3"
-	case "postgresql":
-		driver = "postgres"
-	}
-
-	if driver == "sqlite3" && !strings.Contains(dsn, "_foreign_keys") {
+	if driver == "sqlite" && !strings.Contains(dsn, "foreign_keys") {
 		if strings.Contains(dsn, "?") {
-			dsn += "&_foreign_keys=on"
+			dsn += "&_pragma=foreign_keys(1)"
 		} else {
-			dsn += "?_foreign_keys=on"
+			dsn += "?_pragma=foreign_keys(1)"
 		}
 	}
 

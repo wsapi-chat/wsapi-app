@@ -33,11 +33,11 @@ type InstanceRecord struct {
 }
 
 // Open creates a Store backed by the given database driver.
-// Supported drivers: "sqlite", "sqlite3", "postgres", "postgresql".
+// Supported drivers: "sqlite", "postgres".
 func Open(driver, dsn string) (Store, error) {
 	switch driver {
-	case "sqlite", "sqlite3":
-		db, err := sql.Open("sqlite3", dsn)
+	case "sqlite":
+		db, err := sql.Open("sqlite", dsn)
 		if err != nil {
 			return nil, fmt.Errorf("open sqlite: %w", err)
 		}

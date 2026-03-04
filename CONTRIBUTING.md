@@ -7,9 +7,6 @@ Thank you for your interest in contributing! This guide will help you get starte
 ### Prerequisites
 
 - **Go 1.25+** — [install](https://go.dev/doc/install)
-- **CGO enabled** — required for the SQLite driver
-  - macOS: works out of the box
-  - Linux: `apt install gcc` (or equivalent for your distro)
 - **golangci-lint** (optional) — `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 
 ### Building
@@ -64,11 +61,20 @@ Handler (request parsing, validation, response) ->
 
 ### Adding Features
 
-| Task             | Files to Edit                                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| New API endpoint | `internal/handler/<domain>.go` -> `internal/whatsapp/<domain>.go` -> `cmd/server/main.go` (register route)                            |
-| New event type   | `internal/event/constants.go` -> `internal/event/projector_<domain>.go` -> `internal/event/types.go` -> `internal/event/projector.go` |
-| Configuration    | `internal/config/config.go` -> `config.example.yaml` -> `.env.example`                                                                |
+| Task | Files to Edit |
+|------|---------------|
+| New API endpoint | `internal/handler/<domain>.go` -> `internal/whatsapp/<domain>.go` -> `cmd/server/main.go` (register route) |
+| New event type | `internal/event/constants.go` -> `internal/event/projector_<domain>.go` -> `internal/event/types.go` -> `internal/event/projector.go` |
+| Configuration | `internal/config/config.go` -> `config.example.yaml` -> `.env.example` |
+
+See [`.claude/development-guide.md`](.claude/development-guide.md) for detailed examples.
+
+### Database Migrations
+
+- **App store** (`internal/store/`): append a new `migrateVN` function in `internal/store/migrate.go`
+- **WhatsApp store** (`internal/whatsapp/`): append a new `waMigrateVN` function in `internal/whatsapp/migrate.go`
+
+Never modify existing migrations.
 
 ## Commit Conventions
 
@@ -102,6 +108,10 @@ Validate with:
 ```bash
 make openapi-lint
 ```
+
+## `.claude/` Directory
+
+The `.claude/` directory contains detailed architecture documentation used by AI coding assistants. These files are maintained alongside the codebase — if your change affects the architecture, please update the relevant docs.
 
 ## Code of Conduct
 

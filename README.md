@@ -38,7 +38,7 @@ cp config.example.yaml config.yaml   # edit as needed (see Configuration below)
 docker compose up --build
 ```
 
-**Option C: From source** (requires Go 1.25+ and CGO):
+**Option C: From source** (requires Go 1.25+):
 
 ```bash
 cp config.example.yaml config.yaml   # edit as needed (see Configuration below)
@@ -186,8 +186,6 @@ make fmt-check      # check formatting
 make openapi-lint   # validate OpenAPI specs
 make help           # show all targets
 ```
-
-CGO is required for the SQLite driver. On macOS this works out of the box. On Linux: `apt install gcc`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 

@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 const (
-	dialectSQLite   = "sqlite3"
+	dialectSQLite   = "sqlite"
 	dialectPostgres = "postgres"
 )
 
@@ -29,18 +29,11 @@ var allWAMigrations = []waMigration{
 // tables (wsapi_chats, wsapi_contacts, etc.) in the whatsmeow database.
 // It must be called before opening ChatStore or ContactStore.
 func MigrateCustomTables(driver, dsn string) error {
-	switch driver {
-	case "sqlite":
-		driver = dialectSQLite
-	case "postgresql":
-		driver = dialectPostgres
-	}
-
-	if driver == dialectSQLite && !strings.Contains(dsn, "_foreign_keys") {
+	if driver == dialectSQLite && !strings.Contains(dsn, "foreign_keys") {
 		if strings.Contains(dsn, "?") {
-			dsn += "&_foreign_keys=on"
+			dsn += "&_pragma=foreign_keys(1)"
 		} else {
-			dsn += "?_foreign_keys=on"
+			dsn += "?_pragma=foreign_keys(1)"
 		}
 	}
 

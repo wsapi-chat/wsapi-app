@@ -12,7 +12,7 @@ import (
 	"go.mau.fi/whatsmeow/store/sqlstore"
 
 	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // Service wraps a whatsmeow client and exposes domain-specific sub-services.
@@ -151,20 +151,12 @@ func (s *Service) DeleteDevice() {
 
 // OpenContainer initializes a whatsmeow sqlstore container.
 func OpenContainer(ctx context.Context, driver, dsn string, logger *slog.Logger) (*sqlstore.Container, error) {
-	// Map friendly driver names to the actual database/sql driver names.
-	switch driver {
-	case "sqlite":
-		driver = "sqlite3"
-	case "postgresql":
-		driver = "postgres"
-	}
-
 	// SQLite requires foreign keys enabled for whatsmeow schema migrations.
-	if driver == "sqlite3" && !strings.Contains(dsn, "_foreign_keys") {
+	if driver == "sqlite" && !strings.Contains(dsn, "foreign_keys") {
 		if strings.Contains(dsn, "?") {
-			dsn += "&_foreign_keys=on"
+			dsn += "&_pragma=foreign_keys(1)"
 		} else {
-			dsn += "?_foreign_keys=on"
+			dsn += "?_pragma=foreign_keys(1)"
 		}
 	}
 
