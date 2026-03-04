@@ -1,3 +1,5 @@
+version: "2"
+
 linters:
   enable:
     - errcheck
@@ -10,7 +12,3 @@ linters:
     - goimports
     - misspell
     - bodyclose
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/wsapi-chat/wsapi-app
