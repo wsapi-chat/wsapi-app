@@ -14,7 +14,7 @@ dockers:
   - image_templates:
       - "docker.io/wsapichat/wsapi:{{ .Tag }}"
       - "docker.io/wsapichat/wsapi:latest"
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.source=https://github.com/wsapi-chat/wsapi-app"

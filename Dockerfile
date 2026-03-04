@@ -18,7 +18,6 @@ RUN apk add --no-cache ca-certificates wget
 WORKDIR /app
 
 COPY --from=builder /build/server /app/server
-COPY config.example.yaml /app/config.yaml
 
 RUN mkdir -p /app/data
 
