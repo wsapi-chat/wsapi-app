@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/disintegration/imaging v1.6.2
-	github.com/go-chi/chi/v5 v5.0.12
+	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-playground/validator/v10 v10.25.0
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.34
