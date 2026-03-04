@@ -42,7 +42,7 @@ func Open(driver, dsn string) (Store, error) {
 			return nil, fmt.Errorf("open sqlite: %w", err)
 		}
 		if err := migrate(db, dialectSQLite); err != nil {
-			db.Close()
+			_ = db.Close()
 			return nil, fmt.Errorf("migrate sqlite: %w", err)
 		}
 		return &sqliteStore{db: db}, nil
@@ -53,7 +53,7 @@ func Open(driver, dsn string) (Store, error) {
 			return nil, fmt.Errorf("open postgres: %w", err)
 		}
 		if err := migrate(db, dialectPostgres); err != nil {
-			db.Close()
+			_ = db.Close()
 			return nil, fmt.Errorf("migrate postgres: %w", err)
 		}
 		return &postgresStore{db: db}, nil

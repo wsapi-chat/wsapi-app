@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/wsapi-chat/wsapi-app/internal/config"
 	"github.com/wsapi-chat/wsapi-app/internal/event"
-	"github.com/redis/go-redis/v9"
 )
 
 // RedisPublisher publishes events to a Redis stream via XADD.

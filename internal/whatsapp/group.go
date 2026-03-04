@@ -14,20 +14,20 @@ import (
 
 // GroupInfoResponse is the domain response type for group information.
 type GroupInfoResponse struct {
-	GroupID                string              `json:"groupId"`
-	Owner                  identity.Identity   `json:"owner"`
-	Name                   string              `json:"name"`
-	CreatedAt              time.Time           `json:"createdAt"`
-	Description            string              `json:"description"`
-	IsAnnounce             bool                `json:"isAnnounce"`
-	IsLocked               bool                `json:"isLocked"`
-	IsEphemeral            bool                `json:"isEphemeral"`
-	EphemeralExpiration    int64               `json:"ephemeralExpiration"`
-	Participants           []GroupParticipant  `json:"participants"`
-	CommunityID            string              `json:"communityId,omitempty"`
-	IsAnnouncementGroup    bool                `json:"isAnnouncementGroup,omitempty"`
-	IsJoinApprovalRequired bool                `json:"isJoinApprovalRequired"`
-	MemberAddMode          string              `json:"memberAddMode"`
+	GroupID                string             `json:"groupId"`
+	Owner                  identity.Identity  `json:"owner"`
+	Name                   string             `json:"name"`
+	CreatedAt              time.Time          `json:"createdAt"`
+	Description            string             `json:"description"`
+	IsAnnounce             bool               `json:"isAnnounce"`
+	IsLocked               bool               `json:"isLocked"`
+	IsEphemeral            bool               `json:"isEphemeral"`
+	EphemeralExpiration    int64              `json:"ephemeralExpiration"`
+	Participants           []GroupParticipant `json:"participants"`
+	CommunityID            string             `json:"communityId,omitempty"`
+	IsAnnouncementGroup    bool               `json:"isAnnouncementGroup,omitempty"`
+	IsJoinApprovalRequired bool               `json:"isJoinApprovalRequired"`
+	MemberAddMode          string             `json:"memberAddMode"`
 }
 
 // GroupParticipant represents a participant in a group or community.

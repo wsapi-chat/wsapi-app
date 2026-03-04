@@ -49,8 +49,8 @@ func EncodeMediaID(info MediaDownloadInfo) (string, error) {
 	}
 
 	// Write lengths
-	binary.Write(&buf, binary.LittleEndian, uint16(len(urlBytes)))
-	binary.Write(&buf, binary.LittleEndian, uint16(len(directPathBytes)))
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(len(urlBytes)))
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(len(directPathBytes)))
 	buf.WriteByte(byte(len(info.MediaKey)))
 	buf.WriteByte(byte(len(info.FileSHA256)))
 	buf.WriteByte(byte(len(info.FileEncSHA256)))
@@ -59,7 +59,7 @@ func EncodeMediaID(info MediaDownloadInfo) (string, error) {
 	buf.WriteByte(byte(len(mediaTypeBytes)))
 
 	// Write FileLength as uint64
-	binary.Write(&buf, binary.LittleEndian, info.FileLength)
+	_ = binary.Write(&buf, binary.LittleEndian, info.FileLength)
 
 	// Write data
 	buf.Write(urlBytes)
@@ -100,7 +100,7 @@ func DecodeMediaID(encoded string) (MediaDownloadInfo, error) {
 	if err != nil {
 		return MediaDownloadInfo{}, fmt.Errorf("failed to create decompressor: %v", err)
 	}
-	defer gzReader.Close()
+	defer gzReader.Close() //nolint:errcheck
 
 	decompressed, err := io.ReadAll(gzReader)
 	if err != nil {

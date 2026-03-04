@@ -686,9 +686,10 @@ func projectPinInChatMessage(pinInChatMsg *waE2E.PinInChatMessage, messageContex
 		Expiration: expiration,
 	}
 
-	if action == waE2E.PinInChatMessage_PIN_FOR_ALL {
+	switch action {
+	case waE2E.PinInChatMessage_PIN_FOR_ALL:
 		pin.Pinned = true
-	} else if action == waE2E.PinInChatMessage_UNPIN_FOR_ALL {
+	case waE2E.PinInChatMessage_UNPIN_FOR_ALL:
 		pin.Pinned = false
 	}
 

@@ -73,7 +73,7 @@ func (h *Handler) ServiceError(w http.ResponseWriter, err error) {
 func (h *Handler) Error(w http.ResponseWriter, detail string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]any{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"status": status,
 		"detail": detail,
 	})
@@ -83,5 +83,5 @@ func (h *Handler) Error(w http.ResponseWriter, detail string, status int) {
 func Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }

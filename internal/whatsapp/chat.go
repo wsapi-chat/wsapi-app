@@ -528,7 +528,7 @@ func getBusinessProfileIQ(client *whatsmeow.Client, jid waTypes.JID) (BusinessPr
 		},
 	}
 
-	resp, err := client.DangerousInternals().SendIQ(context.Background(), whatsmeow.DangerousInfoQuery{
+	resp, err := client.DangerousInternals().SendIQ(context.Background(), whatsmeow.DangerousInfoQuery{ //nolint:staticcheck // intentional use of internal API
 		Type:      "get",
 		To:        waTypes.ServerJID,
 		Namespace: "w:biz",

@@ -11,15 +11,15 @@ import (
 )
 
 type Config struct {
-	Server           ServerConfig   `yaml:"server"`
-	Database         DatabaseConfig `yaml:"database"`
+	Server           ServerConfig    `yaml:"server"`
+	Database         DatabaseConfig  `yaml:"database"`
 	Whatsmeow        WhatsmeowConfig `yaml:"whatsmeow"`
-	Auth             AuthConfig     `yaml:"auth"`
-	Logging          LoggingConfig  `yaml:"logging"`
-	EventsPublishVia string         `yaml:"eventsPublishVia"` // "webhook", "redis", or "none"
-	InstanceDefaults InstanceConfig `yaml:"instanceDefaults"`
-	HTTPProxy        string         `yaml:"httpProxy"`
-	Redis            *RedisConfig   `yaml:"redis,omitempty"`
+	Auth             AuthConfig      `yaml:"auth"`
+	Logging          LoggingConfig   `yaml:"logging"`
+	EventsPublishVia string          `yaml:"eventsPublishVia"` // "webhook", "redis", or "none"
+	InstanceDefaults InstanceConfig  `yaml:"instanceDefaults"`
+	HTTPProxy        string          `yaml:"httpProxy"`
+	Redis            *RedisConfig    `yaml:"redis,omitempty"`
 }
 
 type ServerConfig struct {

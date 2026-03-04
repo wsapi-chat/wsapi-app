@@ -53,7 +53,7 @@ func (h *SessionHandler) QR(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Content-Length", strconv.Itoa(len(png)))
 	w.WriteHeader(http.StatusOK)
-	w.Write(png)
+	_, _ = w.Write(png)
 }
 
 func (h *SessionHandler) QRText(w http.ResponseWriter, r *http.Request) {

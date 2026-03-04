@@ -48,7 +48,7 @@ func MigrateCustomTables(driver, dsn string) error {
 	if err != nil {
 		return fmt.Errorf("open whatsmeow db for migration: %w", err)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck
 
 	return runWAMigrations(db, driver)
 }

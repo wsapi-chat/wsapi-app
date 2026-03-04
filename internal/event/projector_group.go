@@ -178,15 +178,15 @@ func ProjectJoinedGroup(evt *waEvents.JoinedGroup, pctx *ProjectorContext) (stri
 	}
 
 	// Community context fields from embedded GroupInfo
-	if evt.GroupInfo.IsParent {
+	if evt.IsParent {
 		data.IsCommunity = true
 	}
 
-	if !evt.GroupInfo.LinkedParentJID.IsEmpty() {
-		data.CommunityID = evt.GroupInfo.LinkedParentJID.String()
+	if !evt.LinkedParentJID.IsEmpty() {
+		data.CommunityID = evt.LinkedParentJID.String()
 	}
 
-	if evt.GroupInfo.IsDefaultSubGroup {
+	if evt.IsDefaultSubGroup {
 		data.IsAnnouncementGroup = true
 	}
 

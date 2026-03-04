@@ -12,16 +12,16 @@ import (
 
 // NewsletterInfoResponse is the domain response type for newsletter information.
 type NewsletterInfoResponse struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	SubscriberCount   int    `json:"subscriberCount"`
-	VerificationState string `json:"verificationState"`
-	PictureURL        string `json:"pictureUrl,omitempty"`
-	InviteCode        string `json:"inviteCode,omitempty"`
-	Role              string `json:"role,omitempty"`
-	Mute              string `json:"mute,omitempty"`
-	State             string `json:"state"`
+	ID                string    `json:"id"`
+	Name              string    `json:"name"`
+	Description       string    `json:"description"`
+	SubscriberCount   int       `json:"subscriberCount"`
+	VerificationState string    `json:"verificationState"`
+	PictureURL        string    `json:"pictureUrl,omitempty"`
+	InviteCode        string    `json:"inviteCode,omitempty"`
+	Role              string    `json:"role,omitempty"`
+	Mute              string    `json:"mute,omitempty"`
+	State             string    `json:"state"`
 	CreatedAt         time.Time `json:"createdAt"`
 }
 

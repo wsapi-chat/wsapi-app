@@ -112,7 +112,7 @@ func (s *ContactStore) List(ctx context.Context, ourJID string) ([]ContactRecord
 	if err != nil {
 		return nil, fmt.Errorf("list contacts: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var records []ContactRecord
 	for rows.Next() {

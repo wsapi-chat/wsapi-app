@@ -90,7 +90,7 @@ func (s *HistorySyncStore) ListChats(ctx context.Context, ourJID string) ([]stri
 	if err != nil {
 		return nil, fmt.Errorf("list history sync chats: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var chats []string
 	for rows.Next() {
@@ -123,7 +123,7 @@ func (s *HistorySyncStore) GetMessages(ctx context.Context, ourJID, chatJID stri
 	if err != nil {
 		return nil, fmt.Errorf("get history sync messages for %s: %w", chatJID, err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var msgs []string
 	for rows.Next() {

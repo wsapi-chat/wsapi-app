@@ -89,7 +89,7 @@ func (s *sqliteStore) ListInstances(ctx context.Context) ([]InstanceRecord, erro
 	if err != nil {
 		return nil, fmt.Errorf("list instances: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var records []InstanceRecord
 	for rows.Next() {
@@ -159,4 +159,3 @@ func (s *sqliteStore) UpdateDeviceState(ctx context.Context, id, deviceID string
 func (s *sqliteStore) Close() error {
 	return s.db.Close()
 }
-

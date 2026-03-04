@@ -113,7 +113,7 @@ func (s *ChatStore) List(ctx context.Context, ourJID string) ([]ChatRecord, erro
 	if err != nil {
 		return nil, fmt.Errorf("list chats: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var records []ChatRecord
 	for rows.Next() {

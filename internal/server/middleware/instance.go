@@ -17,7 +17,7 @@ const (
 func jsonError(w http.ResponseWriter, detail string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]any{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"status": status,
 		"detail": detail,
 	})

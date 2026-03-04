@@ -147,7 +147,7 @@ func (s *SessionService) GeneratePairCode(ctx context.Context, phone string) (st
 	}
 
 	s.client.Disconnect()
-	s.client.Connect()
+	_ = s.client.Connect()
 
 	// Allow the connection to establish before requesting a pair code.
 	time.Sleep(3 * time.Second)

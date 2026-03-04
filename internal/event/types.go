@@ -201,19 +201,19 @@ type GroupEvent struct {
 	ID                  string                       `json:"id"`
 	Sender              identity.Sender              `json:"sender"`
 	Timestamp           time.Time                    `json:"timestamp,omitempty"`
-	Description         *GroupDescriptionInfo         `json:"description,omitempty"`
-	Name                *GroupNameInfo                `json:"name,omitempty"`
-	Locked              *GroupLockedInfo              `json:"locked,omitempty"`
-	Announce            *GroupAnnounceInfo            `json:"announce,omitempty"`
-	MembershipApproval  *GroupMembershipApprovalInfo  `json:"membershipApproval,omitempty"`
-	Delete              *GroupDeleteInfo              `json:"delete,omitempty"`
+	Description         *GroupDescriptionInfo        `json:"description,omitempty"`
+	Name                *GroupNameInfo               `json:"name,omitempty"`
+	Locked              *GroupLockedInfo             `json:"locked,omitempty"`
+	Announce            *GroupAnnounceInfo           `json:"announce,omitempty"`
+	MembershipApproval  *GroupMembershipApprovalInfo `json:"membershipApproval,omitempty"`
+	Delete              *GroupDeleteInfo             `json:"delete,omitempty"`
 	Suspended           *bool                        `json:"suspended,omitempty"`
 	Leave               []identity.Identity          `json:"leave,omitempty"`
 	Join                []identity.Identity          `json:"join,omitempty"`
 	Promote             []identity.Identity          `json:"promote,omitempty"`
 	Demote              []identity.Identity          `json:"demote,omitempty"`
-	Link                *GroupLinkInfo                `json:"link,omitempty"`
-	Unlink              *GroupUnlinkInfo              `json:"unlink,omitempty"`
+	Link                *GroupLinkInfo               `json:"link,omitempty"`
+	Unlink              *GroupUnlinkInfo             `json:"unlink,omitempty"`
 	JoinReason          string                       `json:"joinReason,omitempty"`
 	GroupType           string                       `json:"groupType,omitempty"`
 	IsCommunity         bool                         `json:"isCommunity,omitempty"`

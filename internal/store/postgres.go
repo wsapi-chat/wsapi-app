@@ -83,7 +83,7 @@ func (s *postgresStore) ListInstances(ctx context.Context) ([]InstanceRecord, er
 	if err != nil {
 		return nil, fmt.Errorf("list instances: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var records []InstanceRecord
 	for rows.Next() {
@@ -147,4 +147,3 @@ func (s *postgresStore) UpdateDeviceState(ctx context.Context, id, deviceID stri
 func (s *postgresStore) Close() error {
 	return s.db.Close()
 }
-

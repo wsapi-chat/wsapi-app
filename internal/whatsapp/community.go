@@ -14,14 +14,14 @@ import (
 
 // CommunityInfoResponse is the domain response type for community information.
 type CommunityInfoResponse struct {
-	CommunityID           string              `json:"communityId"`
-	Owner                 identity.Identity    `json:"owner"`
-	Name                  string              `json:"name"`
-	Created               time.Time           `json:"created"`
-	Description           string              `json:"description"`
-	IsLocked              bool                `json:"isLocked"`
-	CommunityApprovalMode string              `json:"communityApprovalMode"`
-	Participants          []GroupParticipant  `json:"participants"`
+	CommunityID           string             `json:"communityId"`
+	Owner                 identity.Identity  `json:"owner"`
+	Name                  string             `json:"name"`
+	Created               time.Time          `json:"created"`
+	Description           string             `json:"description"`
+	IsLocked              bool               `json:"isLocked"`
+	CommunityApprovalMode string             `json:"communityApprovalMode"`
+	Participants          []GroupParticipant `json:"participants"`
 }
 
 // CommunitySubGroupResponse represents a sub-group within a community.

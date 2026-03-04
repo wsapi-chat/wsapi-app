@@ -146,7 +146,7 @@ func (s *Service) RemoveEventHandlers() {
 // DeleteDevice disconnects and removes the device from the store.
 func (s *Service) DeleteDevice() {
 	s.Disconnect()
-	s.client.Store.Delete(context.Background())
+	_ = s.client.Store.Delete(context.Background())
 }
 
 // OpenContainer initializes a whatsmeow sqlstore container.

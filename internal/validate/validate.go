@@ -20,7 +20,7 @@ func Phone(s string) bool {
 func Init() {
 	v = validator.New(validator.WithRequiredStructEnabled())
 
-	v.RegisterValidation("instance_id", func(fl validator.FieldLevel) bool {
+	_ = v.RegisterValidation("instance_id", func(fl validator.FieldLevel) bool {
 		return instanceIDRegex.MatchString(fl.Field().String())
 	})
 }

@@ -54,7 +54,7 @@ func main() {
 		logger.Error("failed to open store", "error", err)
 		os.Exit(1)
 	}
-	defer st.Close()
+	defer st.Close() //nolint:errcheck
 
 	// Initialize whatsmeow container (device sessions)
 	waContainer, err := whatsapp.OpenContainer(context.Background(), cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN, waLogger)
@@ -75,7 +75,7 @@ func main() {
 		logger.Error("failed to open chat store", "error", err)
 		os.Exit(1)
 	}
-	defer chatStore.Close()
+	defer chatStore.Close() //nolint:errcheck
 
 	// Initialize contact store (wsapi_contacts table in whatsmeow DB)
 	contactStore, err := whatsapp.OpenContactStore(cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN)
@@ -83,7 +83,7 @@ func main() {
 		logger.Error("failed to open contact store", "error", err)
 		os.Exit(1)
 	}
-	defer contactStore.Close()
+	defer contactStore.Close() //nolint:errcheck
 
 	// Initialize history sync store (wsapi_history_sync_messages table in whatsmeow DB)
 	historySyncStore, err := whatsapp.OpenHistorySyncStore(cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN)
@@ -91,7 +91,7 @@ func main() {
 		logger.Error("failed to open history sync store", "error", err)
 		os.Exit(1)
 	}
-	defer historySyncStore.Close()
+	defer historySyncStore.Close() //nolint:errcheck
 
 	// Initialize publisher factory (used per instance)
 	pubFactory := publisher.NewFactory(cfg, logger)
@@ -113,7 +113,7 @@ func main() {
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status": http.StatusNotFound,
 			"detail": "not found",
 		})
@@ -121,7 +121,7 @@ func main() {
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status": http.StatusMethodNotAllowed,
 			"detail": "method not allowed",
 		})

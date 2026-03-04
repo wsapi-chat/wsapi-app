@@ -29,7 +29,7 @@ func DownloadMediaFromURL(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to download from URL: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.ContentLength > maxDownloadSize {
 		return nil, fmt.Errorf("file size %d bytes exceeds limit of %d bytes", resp.ContentLength, maxDownloadSize)

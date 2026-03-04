@@ -69,7 +69,7 @@ curl -X POST http://localhost:8080/admin/instances \
 
 ### 3. Pair your WhatsApp device
 
-Once the instance is created, link it to your WhatsApp account. All instance endpoints require the `X-Instance-Id` and `X-Api-Key` headers (see configuration below to set the ApiKey).
+Once the instance is created, link it to your WhatsApp account. All instance endpoints require the `X-Instance-Id` and `X-Api-Key` headers (see configuration below to set the ApiKey). 
 
 **Option A: QR code** (scan with your phone):
 
@@ -173,6 +173,7 @@ Events are delivered in real time when things happen on WhatsApp (incoming messa
 **Redis Streams** — events are published via `XADD` to a configurable Redis stream (default: `stream:<instanceId>`).
 
 See the [events spec](openapi/wsapi-events.yml) for all event types and payload schemas.
+
 
 ## Development
 

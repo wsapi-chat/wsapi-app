@@ -1,8 +1,8 @@
 package event
 
 const (
-	TypeLoggedOut = "logged_out"
-	TypeLoggedIn  = "logged_in"
+	TypeLoggedOut  = "logged_out"
+	TypeLoggedIn   = "logged_in"
 	TypeLoginError = "login_error"
 
 	TypeInitialSyncFinished = "initial_sync_finished"

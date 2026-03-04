@@ -62,7 +62,7 @@ func (p *WebhookPublisher) Publish(ctx context.Context, evt event.Event) error {
 	if err != nil {
 		return fmt.Errorf("webhook request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
