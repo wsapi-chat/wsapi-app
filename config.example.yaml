@@ -1,0 +1,47 @@
+server:
+  port: 8080
+  readTimeout: "30s"
+  writeTimeout: "60s"
+  shutdownTimeout: "10s"
+
+database:
+  driver: "sqlite" # "sqlite" or "postgres"
+  dsn: "./data/wsapi.db" # SQLite path or PostgreSQL connection string
+
+whatsmeow:
+  driver: "sqlite" # "sqlite" or "postgres" (env: WSAPI_WHATSMEOW_DB_DRIVER)
+  dsn: "./data/whatsmeow.db" # SQLite path or PostgreSQL connection string (env: WSAPI_WHATSMEOW_DB_DSN)
+  logLevel: "warn" # debug, info, warn, error (env: WSAPI_WHATSMEOW_LOG_LEVEL)
+  pairClientType: "chrome" # chrome, edge, firefox, opera, safari (env: WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE)
+  pairClientDisplayName: "Chrome (Windows)" # Display name shown during QR pairing (env: WSAPI_WHATSMEOW_PAIR_CLIENT_DISPLAY_NAME)
+
+auth:
+  adminApiKey: "" # API key for /admin/instances management, sent via X-Api-Key header (env: WSAPI_ADMIN_API_KEY)
+
+logging:
+  level: "info" # debug, info, warn, error (env: WSAPI_LOG_LEVEL)
+  format: "text" # text or json (env: WSAPI_LOG_FORMAT)
+  redactPii: true # redact sensitive fields (message text, media filenames, etc.) from event logs (env: WSAPI_LOG_REDACT)
+
+httpProxy: "" # HTTP proxy URL for outbound requests (env: WSAPI_HTTP_PROXY)
+
+instanceDefaults:
+  apiKey: "" # Default API key for instances (env: WSAPI_DEFAULT_API_KEY)
+  webhookUrl: "" # Default webhook URL (env: WSAPI_DEFAULT_WEBHOOK_URL)
+  signingSecret: "" # Default HMAC signing secret (env: WSAPI_DEFAULT_SIGNING_SECRET)
+  eventFilters: [] # Default event filters (env: WSAPI_DEFAULT_EVENT_FILTERS)
+  historySync: # Default history sync (env: WSAPI_DEFAULT_HISTORY_SYNC)
+
+eventsPublishVia: "none" # "webhook", "redis", or "none" (env: WSAPI_PUBLISH_VIA)
+
+
+# redis:                           # Optional Redis configuration
+#   mode: "standalone"             # "standalone" (default) or "sentinel" (env: WSAPI_REDIS_MODE)
+#   url: "localhost:6379"          # host:port for standalone; comma-separated sentinel addrs for sentinel (env: WSAPI_REDIS_URL)
+#   password: ""                   # (env: WSAPI_REDIS_PASSWORD)
+#   db: 0                          # (env: WSAPI_REDIS_DB)
+#   streamName: ""                 # Fixed stream name; default: "stream:<instanceId>" (env: WSAPI_REDIS_STREAM_NAME)
+#   tls: false                     # Enable TLS (env: WSAPI_REDIS_TLS)
+#   tlsInsecure: false             # Skip TLS certificate verification (env: WSAPI_REDIS_TLS_INSECURE)
+#   masterName: "mymaster"         # Sentinel master name (env: WSAPI_REDIS_MASTER_NAME)
+#   sentinelPassword: ""           # Sentinel auth password (env: WSAPI_REDIS_SENTINEL_PASSWORD)

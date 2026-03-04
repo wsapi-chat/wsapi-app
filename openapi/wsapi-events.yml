@@ -1,0 +1,2323 @@
+openapi: 3.1.0
+info:
+  title: WSAPI Events
+  description: This document describes the events that can be received from the WSAPI API. Each event represents a specific type of notification or update from WSAPI.
+  version: 2.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: https://your-webhook-endpoint.yourcompany.com
+    description: Your webhook endpoint that receives WSAPI events
+security: []
+tags:
+  - name: Session
+  - name: Chats
+  - name: Messages
+  - name: Contacts
+  - name: Groups
+  - name: Users
+  - name: Newsletters
+  - name: Calls
+webhooks:
+  call_offer:
+    post:
+      operationId: receiveCallOfferEvent
+      tags:
+        - Calls
+      summary: Call offer event
+      description: Event emitted when a call offer is received
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CallOfferEvent"
+            example:
+              eventId: evt_a1b2c3d4e5f67890
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: call_offer
+              eventData:
+                id: call_123
+                caller:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                chatId: 1234567890@s.whatsapp.net
+                isGroup: false
+                time: "2025-05-19T00:51:44.816Z"
+                isVideo: true
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  call_terminate:
+    post:
+      operationId: receiveCallTerminateEvent
+      tags:
+        - Calls
+      summary: Call terminate event
+      description: Event emitted when a call is terminated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CallTerminateEvent"
+            example:
+              eventId: evt_b2c3d4e5f6789012
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: call_terminate
+              eventData:
+                id: call_123
+                caller:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                time: "2025-05-19T00:51:44.816Z"
+                reason: ended
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  call_accept:
+    post:
+      operationId: receiveCallAcceptEvent
+      tags:
+        - Calls
+      summary: Call accept event
+      description: Event emitted when a call is accepted
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CallAcceptEvent"
+            example:
+              eventId: evt_c3d4e5f678901234
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: call_accept
+              eventData:
+                id: call_123
+                caller:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                time: "2025-05-19T00:51:44.816Z"
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  chat_setting:
+    post:
+      operationId: receiveChatSettingEvent
+      tags:
+        - Chats
+      summary: Chat setting event
+      description: Event for chat settings changes (mute, pin, read, archive, ephemeral)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSettingEvent"
+            examples:
+              mute:
+                summary: Chat muted
+                value:
+                  eventId: evt_d4e5f67890123456
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: chat_setting
+                  eventData:
+                    id: 1234567890@s.whatsapp.net
+                    settingType: mute
+                    mute:
+                      isMuted: true
+                      muteEndTime: "2025-05-20T00:51:44.816Z"
+              pin:
+                summary: Chat pinned
+                value:
+                  eventId: evt_e5f6789012345678
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: chat_setting
+                  eventData:
+                    id: 1234567890@s.whatsapp.net
+                    settingType: pin
+                    pin:
+                      isPinned: true
+              read:
+                summary: Chat marked as read
+                value:
+                  eventId: evt_f678901234567890
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: chat_setting
+                  eventData:
+                    id: 1234567890@s.whatsapp.net
+                    settingType: read
+                    read:
+                      isRead: true
+              archive:
+                summary: Chat archived
+                value:
+                  eventId: evt_0123456789abcdef
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: chat_setting
+                  eventData:
+                    id: 1234567890@s.whatsapp.net
+                    settingType: archive
+                    archive:
+                      isArchived: true
+              ephemeral:
+                summary: Ephemeral messages enabled
+                value:
+                  eventId: evt_1234567890abcdef
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: chat_setting
+                  eventData:
+                    id: 1234567890@s.whatsapp.net
+                    settingType: ephemeral
+                    ephemeral:
+                      expiration: 7d
+                      sender:
+                        id: 1234567890@s.whatsapp.net
+                        lid: 12345678901234@lid
+                        phone: "1234567890"
+                        isMe: false
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  chat_presence:
+    post:
+      operationId: receiveChatPresenceEvent
+      tags:
+        - Chats
+      summary: Chat presence event
+      description: Event for chat presence updates (typing, recording, paused)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatPresenceEvent"
+            example:
+              eventId: evt_2345678901abcdef
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: chat_presence
+              eventData:
+                id: 1234567890@s.whatsapp.net
+                sender:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                  isMe: false
+                state: typing
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  chat_push_name:
+    post:
+      operationId: receiveChatPushNameEvent
+      tags:
+        - Chats
+      summary: Chat push name event
+      description: Event for chat push name updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatPushNameEvent"
+            example:
+              eventId: evt_3456789012abcdef
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: chat_push_name
+              eventData:
+                user:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                pushName: John Doe
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  chat_status:
+    post:
+      operationId: receiveChatStatusEvent
+      tags:
+        - Chats
+      summary: Chat status event
+      description: Event for chat about/status text updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatStatusEvent"
+            example:
+              eventId: evt_4567890123abcdef
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: chat_status
+              eventData:
+                user:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                status: Available
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  chat_picture:
+    post:
+      operationId: receiveChatPictureEvent
+      tags:
+        - Chats
+      summary: Chat picture event
+      description: Event for chat picture updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatPictureEvent"
+            example:
+              eventId: evt_5678901234abcdef
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: chat_picture
+              eventData:
+                id: 1234567890@s.whatsapp.net
+                sender:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                  isMe: false
+                pictureId: picture_123
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  contact:
+    post:
+      operationId: receiveContactEvent
+      tags:
+        - Contacts
+      summary: Contact event
+      description: Event for contact updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactEvent"
+            example:
+              eventId: evt_6789012345abcdef
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: contact
+              eventData:
+                contact:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                fullName: John Doe
+                inPhoneAddressBook: true
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  group:
+    post:
+      operationId: receiveGroupEvent
+      tags:
+        - Groups
+      summary: Group event
+      description: Event for group and community updates (name/topic changes, members join/leave, admin changes, community linking)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupEvent"
+            examples:
+              topic_change:
+                summary: Group topic/description changed
+                value:
+                  eventId: evt_7890123456abcdef
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 1234567890-1234567890@g.us
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    description:
+                      topic: New Group Description
+                    timestamp: "2025-05-19T00:51:44.816Z"
+              name_change:
+                summary: Group name changed
+                value:
+                  eventId: evt_890123456789abcd
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 1234567890-1234567890@g.us
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    name:
+                      name: New Group Name
+                    timestamp: "2025-05-19T00:51:44.816Z"
+              member_join:
+                summary: Members joined the group
+                value:
+                  eventId: evt_90123456789abcde
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 1234567890-1234567890@g.us
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    join:
+                      - id: 9876543210@s.whatsapp.net
+                        lid: 98765432101234@lid
+                        phone: "9876543210"
+                      - id: 5551234567@s.whatsapp.net
+                        lid: 55512345671234@lid
+                        phone: "5551234567"
+              member_leave:
+                summary: Members left the group
+                value:
+                  eventId: evt_0123456789abcde0
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 1234567890-1234567890@g.us
+                    sender:
+                      id: 9876543210@s.whatsapp.net
+                      lid: 98765432101234@lid
+                      phone: "9876543210"
+                      isMe: false
+                    leave:
+                      - id: 9876543210@s.whatsapp.net
+                        lid: 98765432101234@lid
+                        phone: "9876543210"
+              admin_promote:
+                summary: Members promoted to admin
+                value:
+                  eventId: evt_abcdef0123456789
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 1234567890-1234567890@g.us
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    promote:
+                      - id: 9876543210@s.whatsapp.net
+                        lid: 98765432101234@lid
+                        phone: "9876543210"
+                    timestamp: "2025-05-19T00:51:44.816Z"
+              joined_community:
+                summary: Joined a community
+                value:
+                  eventId: evt_bcdef01234567890
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 1234567890-1234567890@g.us
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isCommunity: true
+                    joinReason: invite
+                    join:
+                      - id: 1111111111@s.whatsapp.net
+                        lid: 11111111111234@lid
+                        phone: "1111111111"
+              joined_community_group:
+                summary: Joined a group inside a community
+                value:
+                  eventId: evt_cdef012345678901
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 9876543210-9876543210@g.us
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    communityId: 1234567890-1234567890@g.us
+                    isAnnouncementGroup: false
+                    joinReason: invite
+                    join:
+                      - id: 1111111111@s.whatsapp.net
+                        lid: 11111111111234@lid
+                        phone: "1111111111"
+              group_linked_to_community:
+                summary: Group linked to a community
+                value:
+                  eventId: evt_def0123456789012
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: group
+                  eventData:
+                    id: 1234567890-1234567890@g.us
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    link:
+                      type: sub_group
+                      groupId: 9876543210-9876543210@g.us
+                      groupName: New Subgroup
+                      isAnnouncementGroup: false
+                    timestamp: "2025-05-19T00:51:44.816Z"
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  newsletter:
+    post:
+      operationId: receiveNewsletterEvent
+      tags:
+        - Newsletters
+      summary: Newsletter event
+      description: Event for newsletter (channel) subscription and mute changes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterEvent"
+            examples:
+              join:
+                summary: Joined a newsletter
+                value:
+                  eventId: evt_a1b2c3d4e5f67890
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: newsletter
+                  eventData:
+                    id: 1234567890@newsletter
+                    action: join
+                    name: My Channel
+                    role: SUBSCRIBER
+              leave:
+                summary: Left a newsletter
+                value:
+                  eventId: evt_b2c3d4e5f6789012
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: newsletter
+                  eventData:
+                    id: 1234567890@newsletter
+                    action: leave
+                    role: SUBSCRIBER
+              mute_change:
+                summary: Newsletter mute setting changed
+                value:
+                  eventId: evt_c3d4e5f678901234
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: newsletter
+                  eventData:
+                    id: 1234567890@newsletter
+                    action: mute
+                    mute: MUTED
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  message:
+    post:
+      operationId: receiveMessageEvent
+      tags:
+        - Messages
+      summary: Message event
+      description: Event for new messages (text, media, reaction, contact, etc.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageEvent"
+            examples:
+              text:
+                summary: Text message
+                value:
+                  eventId: evt_ef01234567890123
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: message
+                  eventData:
+                    id: "0123456789012345"
+                    time: "2025-05-19T00:51:44.816Z"
+                    chatId: 1234567890@s.whatsapp.net
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isGroup: false
+                    isStatus: false
+                    type: text
+                    text: Hello, world!
+              media_image:
+                summary: Media message (image)
+                value:
+                  eventId: evt_f012345678901234
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: message
+                  eventData:
+                    id: "0123456789012346"
+                    time: "2025-05-19T00:51:45.000Z"
+                    chatId: 1234567890@s.whatsapp.net
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isGroup: false
+                    isStatus: false
+                    type: media
+                    media:
+                      mediaType: image
+                      mimeType: image/jpeg
+                      id: H4sIAAAAAAAA_2L8xXCDQUFBgYuBlYORjQEEMkp...
+                      fileLength: 204800
+                      caption: Check this out
+                      height: 1080
+                      width: 1920
+                      jpegThumbnail: iVBORw0KGgoAAAANSUhEUgAA...
+              media_audio:
+                summary: Media message (audio)
+                value:
+                  eventId: evt_0123456789012345
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: message
+                  eventData:
+                    id: "0123456789012347"
+                    time: "2025-05-19T00:51:46.000Z"
+                    chatId: 1234567890@s.whatsapp.net
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isGroup: false
+                    isStatus: false
+                    type: media
+                    media:
+                      mediaType: audio
+                      mimeType: audio/mpeg
+                      id: H4sIAAAAAAAA_2L8xXCDQUFBgYuBlYORjQEEMkp
+                      fileLength: 512000
+                      duration: 12
+              reaction:
+                summary: Reaction to a message
+                value:
+                  eventId: evt_1234567890123456
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: message
+                  eventData:
+                    id: "0123456789012348"
+                    time: "2025-05-19T00:51:47.000Z"
+                    chatId: 1234567890@s.whatsapp.net
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isGroup: false
+                    isStatus: false
+                    type: reaction
+                    reaction:
+                      messageId: "0123456789012345"
+                      emoji: "\U0001F44D"
+              contact:
+                summary: Single contact vCard
+                value:
+                  eventId: evt_2345678901234567
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: message
+                  eventData:
+                    id: "0123456789012349"
+                    time: "2025-05-19T00:51:48.000Z"
+                    chatId: 1234567890@s.whatsapp.net
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isGroup: false
+                    isStatus: false
+                    type: contact
+                    contact: |
+                      BEGIN:VCARD
+                      VERSION:3.0
+                      N:Doe;Jane;;;
+                      FN:Jane Doe
+                      TEL;TYPE=CELL:+19876543210
+                      END:VCARD
+              pinInChat:
+                summary: Pin/unpin a message in chat
+                value:
+                  eventId: evt_3456789012345678
+                  instanceId: ins_ABCdefGHIjk
+                  receivedAt: "2025-05-19T00:51:44.816Z"
+                  eventType: message
+                  eventData:
+                    id: "0123456789012350"
+                    time: "2025-05-19T00:51:49.000Z"
+                    chatId: 1234567890@s.whatsapp.net
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isGroup: false
+                    isStatus: false
+                    type: pinInChat
+                    pin:
+                      pinned: true
+                      messageId: "0123456789012346"
+                      expiration: 24h
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  message_read:
+    post:
+      operationId: receiveMessageReadEvent
+      tags:
+        - Messages
+      summary: Message read event
+      description: Event for message read/delivery receipts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageReadEvent"
+            example:
+              eventId: evt_4567890123456789
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: message_read
+              eventData:
+                chatId: 1234567890@s.whatsapp.net
+                sender:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                  isMe: false
+                messageSender:
+                  id: 9876543210@s.whatsapp.net
+                  lid: 98765432101234@lid
+                  phone: "9876543210"
+                  isMe: true
+                isGroup: false
+                messageIds:
+                  - "0123456789012345"
+                time: "2025-05-19T00:51:44.816Z"
+                receiptType: read
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  message_delete:
+    post:
+      operationId: receiveMessageDeleteEvent
+      tags:
+        - Messages
+      summary: Message delete event
+      description: Event for message deletions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageDeleteEvent"
+            example:
+              eventId: evt_5678901234567890
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: message_delete
+              eventData:
+                id: "0123456789012345"
+                sender:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                  isMe: false
+                chatId: 1234567890@s.whatsapp.net
+                time: "2025-05-19T00:51:44.816Z"
+                isDeletedForAll: true
+                isDeletedForMe: false
+                isStatus: false
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  message_star:
+    post:
+      operationId: receiveMessageStarEvent
+      tags:
+        - Messages
+      summary: Message star event
+      description: Event for message star/unstar actions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageStarEvent"
+            example:
+              eventId: evt_6789012345678901
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: message_star
+              eventData:
+                id: "0123456789012345"
+                chatId: 1234567890@s.whatsapp.net
+                sender:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                  isMe: false
+                time: "2025-05-19T00:51:44.816Z"
+                isStarred: true
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  message_history_sync:
+    post:
+      operationId: receiveMessageHistorySyncEvent
+      tags:
+        - Messages
+      summary: Message history sync event
+      description: Event sent for on-demand history sync requests, containing messages for the requested chat.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageHistorySyncEvent"
+            example:
+              eventId: evt_7890123456789012
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: message_history_sync
+              eventData:
+                chatId: 1234567890@s.whatsapp.net
+                messages:
+                  - id: "0123456789012345"
+                    time: "2025-05-19T00:51:44.816Z"
+                    chatId: 1234567890@s.whatsapp.net
+                    sender:
+                      id: 1234567890@s.whatsapp.net
+                      lid: 12345678901234@lid
+                      phone: "1234567890"
+                      isMe: false
+                    isGroup: false
+                    isStatus: false
+                    type: text
+                    text: Hello, world!
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  logged_in:
+    post:
+      operationId: receiveLoggedInEvent
+      tags:
+        - Session
+      summary: Logged in event
+      description: >-
+        System event emitted when the user is logged in (pair success).
+        This is a system event — it is always delivered regardless of
+        event filter configuration and cannot be opted out of.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoggedInEvent"
+            example:
+              eventId: evt_8901234567890123
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: logged_in
+              eventData:
+                deviceId: 1234567890:12@s.whatsapp.net
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  logged_out:
+    post:
+      operationId: receiveLoggedOutEvent
+      tags:
+        - Session
+      summary: Logged out event
+      description: >-
+        System event emitted when the user is logged out. This event is
+        guaranteed to be published under all logout circumstances: WhatsApp
+        server-side logout (e.g. 401 on connect), API logout
+        (`POST /session/logout`, reason `api_logout`), and instance deletion
+        (`DELETE /instances/{id}`, reason `instance_deleted`). This is a
+        system event — it is always delivered regardless of event filter
+        configuration and cannot be opted out of.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoggedOutEvent"
+            example:
+              eventId: evt_9012345678901234
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: logged_out
+              eventData:
+                reason: user_logged_out
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  login_error:
+    post:
+      operationId: receiveLoginErrorEvent
+      tags:
+        - Session
+      summary: Login error event
+      description: >-
+        System event emitted when a pairing error occurs. This is a system
+        event — it is always delivered regardless of event filter
+        configuration and cannot be opted out of.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginErrorEvent"
+            example:
+              eventId: evt_0123456789012345
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: login_error
+              eventData:
+                id: 1234567890:12@s.whatsapp.net
+                error: "connection timeout: failed to pair device"
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  initial_sync_finished:
+    post:
+      operationId: receiveInitialSyncFinishedEvent
+      tags:
+        - Session
+      summary: Initial sync finished event
+      description: >-
+        System event emitted when the initial history sync has completed
+        (only when historySync is enabled). Fires after the RECENT sync
+        finishes. This is a system event — it is always delivered regardless
+        of event filter configuration and cannot be opted out of.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitialSyncFinishedEvent"
+            example:
+              eventId: evt_abcdef1234567890
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: initial_sync_finished
+              eventData: {}
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+  user_presence:
+    post:
+      operationId: receiveUserPresenceEvent
+      tags:
+        - Users
+      summary: User presence event
+      description: Event for user presence updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPresenceEvent"
+            example:
+              eventId: evt_bcdef01234567890
+              instanceId: ins_ABCdefGHIjk
+              receivedAt: "2025-05-19T00:51:44.816Z"
+              eventType: user_presence
+              eventData:
+                user:
+                  id: 1234567890@s.whatsapp.net
+                  lid: 12345678901234@lid
+                  phone: "1234567890"
+                status: available
+                lastSeen: "2025-05-19T00:51:44.816Z"
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
+components:
+  schemas:
+    Identity:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          description: The primary user identifier. Prefers phone-based JID (e.g. 1234567890@s.whatsapp.net), falls back to LID.
+        lid:
+          type: string
+          description: The LID-based identifier (e.g. 12345678901234@lid). Present when available.
+        phone:
+          type: string
+          description: The phone number part of the JID (e.g. 1234567890). Present when available.
+        device:
+          type: integer
+          description: The device ID. Present when non-zero.
+    Sender:
+      type: object
+      required:
+        - id
+        - isMe
+      properties:
+        id:
+          type: string
+          description: The primary user identifier. Prefers phone-based JID, falls back to LID.
+        lid:
+          type: string
+          description: The LID-based identifier. Present when available.
+        phone:
+          type: string
+          description: The phone number part of the JID. Present when available.
+        device:
+          type: integer
+          description: The device ID. Present when non-zero.
+        isMe:
+          type: boolean
+          description: Whether the sender is the current user
+    EventEnvelope:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      description: Base envelope for all webhook events
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier (e.g. evt_a1b2c3d4e5f67890)
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          description: The type of event
+        eventData:
+          type: object
+          description: The event-specific payload
+    LoggedInEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - logged_in
+          description: The type of event
+        eventData:
+          type: object
+          properties:
+            deviceId:
+              type: string
+              description: The device ID string
+    LoggedOutEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - logged_out
+          description: The type of event
+        eventData:
+          type: object
+          properties:
+            reason:
+              type: string
+              description: The reason for being logged out
+    LoginErrorEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - login_error
+          description: The type of event
+        eventData:
+          type: object
+          properties:
+            id:
+              type: string
+              description: The device ID string
+            error:
+              type: string
+              description: The error message
+    InitialSyncFinishedEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - initial_sync_finished
+          description: The type of event
+        eventData:
+          type: object
+          description: Empty object, event signals sync completion
+    ChatSettingEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - chat_setting
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - settingType
+          properties:
+            id:
+              type: string
+              description: The chat ID
+            settingType:
+              type: string
+              enum:
+                - mute
+                - pin
+                - read
+                - archive
+                - ephemeral
+              description: The type of chat setting
+            mute:
+              type: object
+              properties:
+                isMuted:
+                  type: boolean
+                muteEndTime:
+                  type: string
+                  format: date-time
+            pin:
+              type: object
+              properties:
+                isPinned:
+                  type: boolean
+            read:
+              type: object
+              properties:
+                isRead:
+                  type: boolean
+            archive:
+              type: object
+              properties:
+                isArchived:
+                  type: boolean
+            ephemeral:
+              type: object
+              properties:
+                expiration:
+                  type: string
+                  enum:
+                    - "off"
+                    - 24h
+                    - 7d
+                    - 90d
+                sender:
+                  $ref: "#/components/schemas/Sender"
+    ChatPresenceEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - chat_presence
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - sender
+            - state
+          properties:
+            id:
+              type: string
+              description: The chat ID
+            sender:
+              $ref: "#/components/schemas/Sender"
+            state:
+              type: string
+              enum:
+                - typing
+                - recording
+                - paused
+    ChatPushNameEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - chat_push_name
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - user
+            - pushName
+          properties:
+            user:
+              $ref: "#/components/schemas/Identity"
+            pushName:
+              type: string
+              description: The user's push name
+    ChatStatusEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - chat_status
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - user
+            - status
+          properties:
+            user:
+              $ref: "#/components/schemas/Identity"
+            status:
+              type: string
+              description: The user's about/status message
+    ChatPictureEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - chat_picture
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - sender
+            - pictureId
+          properties:
+            id:
+              type: string
+              description: The chat ID
+            sender:
+              description: >-
+                The user who changed the chat picture. The `isMe` field is
+                accurately resolved by comparing the event author with the
+                client's own JID.
+              $ref: "#/components/schemas/Sender"
+            pictureId:
+              type: string
+              description: The ID of the chat's profile picture
+    ContactEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - contact
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - contact
+            - fullName
+            - inPhoneAddressBook
+          properties:
+            contact:
+              $ref: "#/components/schemas/Identity"
+            fullName:
+              type: string
+              description: The contact's full name
+            inPhoneAddressBook:
+              type: boolean
+              description: Whether the contact is saved in the phone's address book
+    GroupEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - group
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              description: The group or community ID
+            sender:
+              $ref: "#/components/schemas/Sender"
+            timestamp:
+              type: string
+              format: date-time
+              description: When the change occurred
+            isCommunity:
+              type: boolean
+              description: True if this is a community (not a regular group). Only present on join events.
+            communityId:
+              type: string
+              description: Parent community ID if this group is inside a community. Only present on join events.
+            isAnnouncementGroup:
+              type: boolean
+              description: True if this is the community's main announcement group. Only present on join events.
+            joinReason:
+              type: string
+              description: Reason for joining (e.g., "invite"). Only present on join events.
+            groupType:
+              type: string
+              description: Type of group (e.g., "new" for newly created). Only present on join events.
+            name:
+              type: object
+              description: Present when the group name changes
+              properties:
+                name:
+                  type: string
+                  description: The new group name
+            description:
+              type: object
+              description: Present when the group description/topic changes
+              properties:
+                topic:
+                  type: string
+                  description: The new group description/topic
+            locked:
+              type: object
+              description: Present when the locked status changes (only admins can edit group info)
+              properties:
+                isLocked:
+                  type: boolean
+            announce:
+              type: object
+              description: Present when the announce status changes (only admins can send messages)
+              properties:
+                isAnnounce:
+                  type: boolean
+            join:
+              type: array
+              items:
+                $ref: "#/components/schemas/Identity"
+              description: Array of identities who joined the group
+            leave:
+              type: array
+              items:
+                $ref: "#/components/schemas/Identity"
+              description: Array of identities who left the group
+            promote:
+              type: array
+              items:
+                $ref: "#/components/schemas/Identity"
+              description: Array of identities who were promoted to admin
+            demote:
+              type: array
+              items:
+                $ref: "#/components/schemas/Identity"
+              description: Array of identities who were demoted from admin
+            link:
+              type: object
+              description: Present when a group is linked to a community
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - parent_group
+                    - sub_group
+                    - sibling_group
+                  description: The type of link change
+                groupId:
+                  type: string
+                  description: The linked group ID
+                groupName:
+                  type: string
+                  description: The linked group name
+                isAnnouncementGroup:
+                  type: boolean
+                  description: True if the linked group is the announcement group
+            unlink:
+              type: object
+              description: Present when a group is unlinked from a community
+              properties:
+                type:
+                  type: string
+                  description: The type of unlink
+                reason:
+                  type: string
+                  enum:
+                    - unlink_group
+                    - delete_parent
+                  description: The reason for unlinking
+                groupId:
+                  type: string
+                  description: The unlinked group ID
+            membershipApproval:
+              type: object
+              description: Present when the group's membership approval mode changes
+              properties:
+                isRequired:
+                  type: boolean
+                  description: Whether admin approval is required to join the group
+            delete:
+              type: object
+              description: Present when the group is deleted
+              properties:
+                reason:
+                  type: string
+                  description: The reason for group deletion
+            suspended:
+              type:
+                - boolean
+                - "null"
+              description: Present when the group's suspension status changes. True means suspended, false means unsuspended.
+    NewsletterEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - newsletter
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - action
+          properties:
+            id:
+              type: string
+              description: The newsletter JID (e.g. 1234567890@newsletter)
+            action:
+              type: string
+              enum:
+                - join
+                - leave
+                - mute
+              description: The type of newsletter action
+            name:
+              type: string
+              description: The newsletter name. Present on join events.
+            role:
+              type: string
+              description: The viewer's role in the newsletter (e.g. SUBSCRIBER, ADMIN, OWNER). Present on join and leave events.
+            mute:
+              type: string
+              description: The new mute state (e.g. MUTED, UNMUTED). Present on mute events.
+    MessageEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - message
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - time
+            - chatId
+            - sender
+            - type
+          properties:
+            id:
+              type: string
+              description: The message ID
+            time:
+              type: string
+              format: date-time
+              description: The message timestamp
+            chatId:
+              type: string
+              description: The chat ID
+            sender:
+              $ref: "#/components/schemas/Sender"
+            isGroup:
+              type: boolean
+            isStatus:
+              type: boolean
+            isForwarded:
+              type: boolean
+              description: Whether the message is a forwarded message
+            viewOnce:
+              type: boolean
+              description: Whether the message is a view-once media message (image or video)
+            type:
+              type: string
+              enum:
+                - text
+                - media
+                - reaction
+                - contact
+                - contactArray
+                - pinInChat
+            text:
+              type: string
+            media:
+              type: object
+              properties:
+                mediaType:
+                  type: string
+                  enum:
+                    - image
+                    - video
+                    - audio
+                    - voice
+                    - document
+                    - sticker
+                mimeType:
+                  type: string
+                id:
+                  type: string
+                  description: The media ID that should be used to download the media file
+                fileLength:
+                  type: integer
+                caption:
+                  type: string
+                height:
+                  type: integer
+                width:
+                  type: integer
+                jpegThumbnail:
+                  type: string
+                duration:
+                  type: integer
+                filename:
+                  type: string
+                pageCount:
+                  type: integer
+                title:
+                  type: string
+            reaction:
+              type: object
+              properties:
+                messageId:
+                  type: string
+                emoji:
+                  type: string
+            contact:
+              type: string
+              description: vCard data for a single contact
+            contactArray:
+              type: array
+              items:
+                type: string
+              description: Array of vCard strings when message contains multiple contacts
+            extendedText:
+              type: object
+              properties:
+                matchedText:
+                  type: string
+                description:
+                  type: string
+                title:
+                  type: string
+                jpegThumbnail:
+                  type: string
+            mentions:
+              type: array
+              items:
+                type: string
+            replyTo:
+              type: object
+              properties:
+                id:
+                  type: string
+                sender:
+                  $ref: "#/components/schemas/Sender"
+                isForwarded:
+                  type: boolean
+                text:
+                  type: string
+            ephemeralExpiration:
+              type: string
+              enum:
+                - "off"
+                - 24h
+                - 7d
+                - 90d
+            isEdit:
+              type: boolean
+            edit:
+              type: object
+              properties:
+                originalMessageTime:
+                  type: string
+                  format: date-time
+                originalMessageId:
+                  type: string
+            pin:
+              type: object
+              properties:
+                pinned:
+                  type: boolean
+                messageId:
+                  type: string
+                expiration:
+                  type: string
+                  enum:
+                    - "off"
+                    - 24h
+                    - 7d
+                    - 30d
+    MessageReadEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - message_read
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - chatId
+            - sender
+            - time
+            - receiptType
+          properties:
+            chatId:
+              type: string
+              description: The chat ID
+            sender:
+              $ref: "#/components/schemas/Sender"
+            messageSender:
+              $ref: "#/components/schemas/Sender"
+            isGroup:
+              type: boolean
+            messageIds:
+              type: array
+              items:
+                type: string
+            time:
+              type: string
+              format: date-time
+            receiptType:
+              type: string
+              enum:
+                - delivered
+                - read
+                - played
+                - readSelf
+                - sender
+                - retry
+                - serverError
+                - inactive
+                - historySync
+    MessageDeleteEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - message_delete
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - sender
+            - chatId
+            - time
+          properties:
+            id:
+              type: string
+              description: The message ID
+            sender:
+              $ref: "#/components/schemas/Sender"
+            chatId:
+              type: string
+              description: The chat ID
+            time:
+              type: string
+              format: date-time
+            isDeletedForAll:
+              type: boolean
+            isDeletedForMe:
+              type: boolean
+            isStatus:
+              type: boolean
+    MessageStarEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - message_star
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - chatId
+            - sender
+            - time
+            - isStarred
+          properties:
+            id:
+              type: string
+              description: The message ID
+            chatId:
+              type: string
+              description: The chat ID
+            sender:
+              $ref: "#/components/schemas/Sender"
+            time:
+              type: string
+              format: date-time
+              description: The timestamp when the star action occurred
+            isStarred:
+              type: boolean
+              description: Whether the message was starred (true) or unstarred (false)
+    MessageHistorySyncEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - message_history_sync
+          description: The type of event
+        eventData:
+          type: object
+          properties:
+            chatId:
+              type: string
+              description: >-
+                The chat ID the synced messages belong to. Set when all messages
+                in the sync share the same chat (typical for on-demand syncs),
+                otherwise empty.
+            messages:
+              type: array
+              description: Array of message event payloads
+              items:
+                $ref: "#/components/schemas/MessageEventData"
+    MessageEventData:
+      type: object
+      description: The eventData payload of a message event (used inside history sync arrays)
+      required:
+        - id
+        - time
+        - chatId
+        - sender
+        - type
+      properties:
+        id:
+          type: string
+        time:
+          type: string
+          format: date-time
+        chatId:
+          type: string
+        sender:
+          $ref: "#/components/schemas/Sender"
+        isGroup:
+          type: boolean
+        isStatus:
+          type: boolean
+        isForwarded:
+          type: boolean
+          description: Whether the message is a forwarded message
+        viewOnce:
+          type: boolean
+          description: Whether the message is a view-once media message (image or video)
+        type:
+          type: string
+          enum:
+            - text
+            - media
+            - reaction
+            - contact
+            - contactArray
+            - pinInChat
+        text:
+          type: string
+        media:
+          type: object
+          properties:
+            mediaType:
+              type: string
+            mimeType:
+              type: string
+            id:
+              type: string
+            fileLength:
+              type: integer
+            caption:
+              type: string
+            height:
+              type: integer
+            width:
+              type: integer
+            jpegThumbnail:
+              type: string
+            duration:
+              type: integer
+            filename:
+              type: string
+            pageCount:
+              type: integer
+            title:
+              type: string
+        reaction:
+          type: object
+          properties:
+            messageId:
+              type: string
+            emoji:
+              type: string
+        contact:
+          type: string
+        contactArray:
+          type: array
+          items:
+            type: string
+        extendedText:
+          type: object
+          properties:
+            matchedText:
+              type: string
+            description:
+              type: string
+            title:
+              type: string
+            jpegThumbnail:
+              type: string
+        mentions:
+          type: array
+          items:
+            type: string
+        replyTo:
+          type: object
+          properties:
+            id:
+              type: string
+            sender:
+              $ref: "#/components/schemas/Sender"
+            isForwarded:
+              type: boolean
+            text:
+              type: string
+        ephemeralExpiration:
+          type: string
+        isEdit:
+          type: boolean
+        edit:
+          type: object
+          properties:
+            originalMessageTime:
+              type: string
+              format: date-time
+            originalMessageId:
+              type: string
+        pin:
+          type: object
+          properties:
+            pinned:
+              type: boolean
+            messageId:
+              type: string
+            expiration:
+              type: string
+    UserPresenceEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - user_presence
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - user
+            - status
+          properties:
+            user:
+              $ref: "#/components/schemas/Identity"
+            status:
+              type: string
+              enum:
+                - available
+                - unavailable
+            lastSeen:
+              type: string
+              format: date-time
+    CallOfferEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - call_offer
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - caller
+            - chatId
+            - time
+          properties:
+            id:
+              type: string
+              description: The call ID
+            caller:
+              $ref: "#/components/schemas/Identity"
+            chatId:
+              type: string
+              description: The chat ID where the call is offered (caller ID for 1:1, group JID for group calls)
+            isGroup:
+              type: boolean
+              description: Whether the call is a group call
+            time:
+              type: string
+              format: date-time
+              description: The timestamp of the call offer
+            isVideo:
+              type: boolean
+              description: Whether the call is a video call
+    CallTerminateEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - call_terminate
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - caller
+            - time
+            - reason
+          properties:
+            id:
+              type: string
+              description: The call ID
+            caller:
+              $ref: "#/components/schemas/Identity"
+            time:
+              type: string
+              format: date-time
+              description: The timestamp when the call was terminated
+            reason:
+              type: string
+              enum:
+                - rejected
+                - ended
+                - unknown
+              description: The reason for call termination. Unknown or unmapped reasons are reported as "unknown".
+    CallAcceptEvent:
+      type: object
+      required:
+        - eventId
+        - instanceId
+        - receivedAt
+        - eventType
+        - eventData
+      properties:
+        eventId:
+          type: string
+          description: Unique event identifier
+        instanceId:
+          type: string
+          description: The ID of the WhatsApp instance that generated the event
+        receivedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the event was received
+        eventType:
+          type: string
+          enum:
+            - call_accept
+          description: The type of event
+        eventData:
+          type: object
+          required:
+            - id
+            - caller
+            - time
+          properties:
+            id:
+              type: string
+              description: The call ID
+            caller:
+              $ref: "#/components/schemas/Identity"
+            time:
+              type: string
+              format: date-time
+              description: The timestamp when the call was accepted

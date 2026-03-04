@@ -1,0 +1,32 @@
+# OS
+.DS_Store
+
+# Go build output
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test
+*.test
+*.out
+cover.html
+
+# Data / runtime
+data/
+
+# Config (contains secrets, use config.example.yaml)
+config.yaml
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Delve debug binaries
+__debug_bin*
