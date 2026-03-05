@@ -67,6 +67,32 @@ func InstanceAuth(resolver InstanceResolver) func(http.Handler) http.Handler {
 	}
 }
 
+// SingleInstanceAuth resolves the fixed "default" instance for single-instance
+// mode. No X-Instance-Id header is required. API key validation uses the same
+// logic as InstanceAuth.
+func SingleInstanceAuth(resolver InstanceResolver, instanceID string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			inst, ok := resolver.GetInstance(instanceID)
+			if !ok {
+				jsonError(w, "instance not available", http.StatusServiceUnavailable)
+				return
+			}
+
+			token := r.Header.Get("X-Api-Key")
+			expectedKey := inst.GetAPIKey()
+
+			if expectedKey != "" && token != expectedKey {
+				jsonError(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), InstanceKey, inst)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 // RequirePaired rejects requests when the resolved instance does not have
 // a paired WhatsApp device. Apply after InstanceAuth; skip for /session routes.
 func RequirePaired(next http.Handler) http.Handler {

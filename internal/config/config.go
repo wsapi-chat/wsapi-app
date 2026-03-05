@@ -16,6 +16,7 @@ type Config struct {
 	Whatsmeow        WhatsmeowConfig `yaml:"whatsmeow"`
 	Auth             AuthConfig      `yaml:"auth"`
 	Logging          LoggingConfig   `yaml:"logging"`
+	InstanceMode     string          `yaml:"instanceMode"`     // "single" or "multi" (default: "single")
 	EventsPublishVia string          `yaml:"eventsPublishVia"` // "webhook", "redis", or "none"
 	InstanceDefaults InstanceConfig  `yaml:"instanceDefaults"`
 	HTTPProxy        string          `yaml:"httpProxy"`
@@ -99,6 +100,7 @@ type RedisConfig struct {
 
 func defaults() *Config {
 	return &Config{
+		InstanceMode: "single",
 		Server: ServerConfig{
 			Port:            8080,
 			ReadTimeout:     "30s",
@@ -145,6 +147,12 @@ func Load(path string) (*Config, error) {
 	// Environment variable overrides
 	applyEnv(cfg)
 
+	// Normalize and validate instance mode.
+	cfg.InstanceMode = strings.ToLower(cfg.InstanceMode)
+	if cfg.InstanceMode != "single" && cfg.InstanceMode != "multi" {
+		return nil, fmt.Errorf("invalid instanceMode %q: must be \"single\" or \"multi\"", cfg.InstanceMode)
+	}
+
 	return cfg, nil
 }
 
@@ -168,6 +176,9 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("WSAPI_LOG_REDACT"); v != "" {
 		cfg.Logging.RedactPII = strings.EqualFold(v, "true") || v == "1"
 	}
+
+	// Instance mode
+	setIfEnv(&cfg.InstanceMode, "WSAPI_INSTANCE_MODE")
 
 	// HTTP proxy
 	setIfEnv(&cfg.HTTPProxy, "WSAPI_HTTP_PROXY")
