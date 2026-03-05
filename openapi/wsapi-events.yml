@@ -7,7 +7,7 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
-  - url: https://your-webhook-endpoint.yourcompany.com
+  - url: https://yourcompany.com/your-webook-endpoint
     description: Your webhook endpoint that receives WSAPI events
 security: []
 tags:

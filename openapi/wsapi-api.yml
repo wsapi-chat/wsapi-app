@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: WSAPI - WhatsApp API
-  description: RESTful HTTP API for WhatsApp via whatsmeow. Supports multi-instance connections, webhook event delivery, and HMAC-SHA256 signing.
+  description: RESTful HTTP API for WhatsApp via whatsmeow. Supports multi-instance connections, webhook event delivery,and HMAC-SHA256 signing.
   version: 2.0.0
   license:
     name: MIT
@@ -15,7 +15,7 @@ tags:
   - name: Health
     description: Health check
   - name: Instances
-    description: Instance management (admin auth required)
+    description: Instance management (admin auth required, multi mode only)
   - name: Session
     description: WhatsApp session management (login, logout, status)
   - name: Messages
@@ -3194,7 +3194,7 @@ components:
       type: apiKey
       in: header
       name: X-Api-Key
-      description: Admin API key for instance management endpoints (`/admin/instances/*`). Set via `auth.adminApiKey` config.
+      description: Admin API key for instance management endpoints (`/admin/instances/*`). Set via `auth.adminApiKey` config. Only available in multi instance mode.
 
     InstanceAuth:
       type: apiKey
@@ -3207,7 +3207,7 @@ components:
       name: X-Instance-Id
       in: header
       required: true
-      description: The ID of the WhatsApp instance to use
+      description: The ID of the WhatsApp instance to use. Required in multi mode; not needed in single mode (the default instance is resolved automatically).
       schema:
         type: string
         default: "{{instanceId}}"
@@ -3370,7 +3370,7 @@ components:
         id:
           type: string
           description: Unique instance identifier
-          pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$'
+          pattern: "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$"
           maxLength: 64
         webhookUrl:
           type: string

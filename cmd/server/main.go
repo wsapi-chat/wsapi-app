@@ -48,13 +48,17 @@ func main() {
 	// Initialize validator
 	validate.Init()
 
-	// Initialize WSAPI store (instance persistence)
-	st, err := store.Open(cfg.Database.Driver, cfg.Database.DSN)
-	if err != nil {
-		logger.Error("failed to open store", "error", err)
-		os.Exit(1)
+	// Initialize WSAPI store (instance persistence) — only needed in multi mode.
+	var st store.Store
+	if cfg.InstanceMode != "single" {
+		var err error
+		st, err = store.Open(cfg.Database.Driver, cfg.Database.DSN)
+		if err != nil {
+			logger.Error("failed to open store", "error", err)
+			os.Exit(1)
+		}
+		defer st.Close() //nolint:errcheck
 	}
-	defer st.Close() //nolint:errcheck
 
 	// Initialize whatsmeow container (device sessions)
 	waContainer, err := whatsapp.OpenContainer(context.Background(), cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN, waLogger)
@@ -99,11 +103,20 @@ func main() {
 	// Initialize instance manager
 	mgr := instance.NewManager(st, waContainer, chatStore, contactStore, historySyncStore, cfg, pubFactory, logger, waLogger)
 
-	// Restore persisted instances
-	if err := mgr.RestoreInstances(context.Background()); err != nil {
-		logger.Error("failed to restore instances", "error", err)
-		os.Exit(1)
+	// Provision instances based on mode
+	if cfg.InstanceMode == "single" {
+		if err := mgr.EnsureSingleInstance(context.Background()); err != nil {
+			logger.Error("failed to provision single instance", "error", err)
+			os.Exit(1)
+		}
+	} else {
+		if err := mgr.RestoreInstances(context.Background()); err != nil {
+			logger.Error("failed to restore instances", "error", err)
+			os.Exit(1)
+		}
 	}
+
+	logger.Info("instance mode", "mode", cfg.InstanceMode)
 
 	// Create HTTP server
 	srv := server.New(cfg, logger)
@@ -136,16 +149,27 @@ func main() {
 	// Health endpoint (no auth)
 	r.Get("/health", handler.Health)
 
-	// Instance management routes (admin auth, no X-Instance-Id)
-	r.Route("/admin/instances", func(r chi.Router) {
-		r.Use(middleware.AdminAuth(cfg.Auth.AdminAPIKey))
-		ih := handler.NewInstanceHandler(mgr, cfg, logger)
-		ih.RegisterRoutes(r)
-	})
+	// Admin routes (multi mode only)
+	if cfg.InstanceMode == "multi" {
+		r.Route("/admin/instances", func(r chi.Router) {
+			r.Use(middleware.AdminAuth(cfg.Auth.AdminAPIKey))
+			ih := handler.NewInstanceHandler(mgr, cfg, logger)
+			ih.RegisterRoutes(r)
+		})
+	}
 
-	// All other API routes (instance auth)
+	// Instance auth middleware: single mode resolves "default" automatically;
+	// multi mode requires X-Instance-Id header.
+	var instanceAuth func(http.Handler) http.Handler
+	if cfg.InstanceMode == "single" {
+		instanceAuth = middleware.SingleInstanceAuth(mgr, instance.SingleInstanceID)
+	} else {
+		instanceAuth = middleware.InstanceAuth(mgr)
+	}
+
+	// All other API routes
 	r.Route("/", func(r chi.Router) {
-		r.Use(middleware.InstanceAuth(mgr))
+		r.Use(instanceAuth)
 		r.Use(middleware.RequireService)
 
 		// Session routes do not require a paired device.

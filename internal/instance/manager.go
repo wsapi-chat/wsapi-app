@@ -278,6 +278,38 @@ func (m *Manager) UpdateInstanceConfig(ctx context.Context, id string, cfg confi
 	return nil
 }
 
+// SingleInstanceID is the fixed instance ID used in single-instance mode.
+const SingleInstanceID = "default"
+
+// EnsureSingleInstance provisions or refreshes the "default" instance for
+// single-instance mode. It uses whatsmeow's GetFirstDevice to resolve the
+// device session directly, bypassing the wsapi store entirely.
+func (m *Manager) EnsureSingleInstance(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Use whatsmeow's GetFirstDevice — returns existing device or creates new.
+	device, err := m.container.GetFirstDevice(ctx)
+	if err != nil {
+		return fmt.Errorf("get first device: %w", err)
+	}
+
+	var deviceID string
+	if device.ID != nil {
+		deviceID = device.ID.String()
+	}
+
+	// Build config entirely from current InstanceDefaults.
+	cfg := m.cfg.InstanceDefaults
+	cfg.EventFilters = event.StripSystemEvents(cfg.EventFilters)
+
+	inst := m.buildInstance(ctx, SingleInstanceID, deviceID, cfg)
+	m.instances[SingleInstanceID] = inst
+
+	m.logger.Info("single instance ready", "id", SingleInstanceID)
+	return nil
+}
+
 // RestoreInstances loads all persisted instance records and re-creates their
 // in-memory representation. Intended to be called once at startup.
 func (m *Manager) RestoreInstances(ctx context.Context) error {
@@ -344,8 +376,10 @@ func (m *Manager) RestartInstance(ctx context.Context, id string) error {
 // logged_out event. This must be called when the user logs out via the API,
 // because client.Logout() does not emit a LoggedOut event.
 func (m *Manager) HandleLogout(ctx context.Context, id string) {
-	if err := m.store.UpdateDeviceState(ctx, id, "", false); err != nil {
-		m.logger.Error("failed to persist API logout state", "id", id, "error", err)
+	if m.store != nil {
+		if err := m.store.UpdateDeviceState(ctx, id, "", false); err != nil {
+			m.logger.Error("failed to persist API logout state", "id", id, "error", err)
+		}
 	}
 
 	m.mu.RLock()
@@ -510,14 +544,18 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 		case *waEvents.PairSuccess:
 			// Reset the initial sync flag so a new pairing can fire the event again.
 			initialSyncPublished = &sync.Once{}
-			deviceJID := e.ID.String()
-			if err := m.store.UpdateDeviceState(context.Background(), id, deviceJID, true); err != nil {
-				instLogger.Error("failed to persist login state", "error", err)
+			if m.store != nil {
+				deviceJID := e.ID.String()
+				if err := m.store.UpdateDeviceState(context.Background(), id, deviceJID, true); err != nil {
+					instLogger.Error("failed to persist login state", "error", err)
+				}
 			}
 		case *waEvents.LoggedOut:
 			instLogger.Info("device logged out", "reason", e.Reason.String())
-			if err := m.store.UpdateDeviceState(context.Background(), id, "", false); err != nil {
-				instLogger.Error("failed to persist logout state", "error", err)
+			if m.store != nil {
+				if err := m.store.UpdateDeviceState(context.Background(), id, "", false); err != nil {
+					instLogger.Error("failed to persist logout state", "error", err)
+				}
 			}
 			// Publish logged_out directly rather than relying on the projector
 			// pipeline below. During a 401-on-connect the handler queue may
