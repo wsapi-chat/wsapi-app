@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 )
 
@@ -16,23 +15,10 @@ type HistorySyncStore struct {
 	dialect string // "sqlite" or "postgres"
 }
 
-// OpenHistorySyncStore opens a connection to the whatsmeow database for the
-// wsapi_history_sync_messages table. MigrateCustomTables must be called before this.
-func OpenHistorySyncStore(driver, dsn string) (*HistorySyncStore, error) {
-	if driver == "sqlite" && !strings.Contains(dsn, "foreign_keys") {
-		if strings.Contains(dsn, "?") {
-			dsn += "&_pragma=foreign_keys(1)"
-		} else {
-			dsn += "?_pragma=foreign_keys(1)"
-		}
-	}
-
-	db, err := sql.Open(driver, dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open history sync store: %w", err)
-	}
-
-	return &HistorySyncStore{db: db, dialect: driver}, nil
+// NewHistorySyncStore creates a HistorySyncStore using the given shared database pool.
+// MigrateCustomTables must be called before this.
+func NewHistorySyncStore(db *sql.DB, dialect string) *HistorySyncStore {
+	return &HistorySyncStore{db: db, dialect: dialect}
 }
 
 // Insert adds a cached history sync message row. It also lazily deletes
@@ -142,7 +128,3 @@ func (s *HistorySyncStore) DeleteAll(ctx context.Context, ourJID string) error {
 	return nil
 }
 
-// Close closes the database connection.
-func (s *HistorySyncStore) Close() error {
-	return s.db.Close()
-}

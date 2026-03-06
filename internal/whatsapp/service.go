@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 
@@ -59,9 +58,6 @@ func NewService(ctx context.Context, container *sqlstore.Container, deviceID str
 		deviceStore = container.NewDevice()
 	}
 
-	store.SetOSInfo("Windows", store.GetWAVersion())
-	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
-
 	waClient := whatsmeow.NewClient(deviceStore, NewSlogAdapter(waLogger))
 	waClient.EmitAppStateEventsOnFullSync = true
 
@@ -79,7 +75,7 @@ func NewService(ctx context.Context, container *sqlstore.Container, deviceID str
 	svc.Account = &UserMeService{client: waClient, logger: logger}
 	svc.Users = &UserService{client: waClient, logger: logger}
 	svc.Media = &MediaService{client: waClient, logger: logger}
-	svc.Session = &SessionService{client: waClient, logger: logger, pairClientType: "chrome", pairClientDisplayName: "Chrome (Windows)"}
+	svc.Session = &SessionService{client: waClient, logger: logger}
 	svc.Calls = &CallService{client: waClient, logger: logger}
 	svc.Newsletters = &NewsletterService{client: waClient, logger: logger}
 	svc.Status = &StatusService{client: waClient, logger: logger}
@@ -88,11 +84,17 @@ func NewService(ctx context.Context, container *sqlstore.Container, deviceID str
 	return svc, nil
 }
 
-// SetPairClient configures the pair client type and display name used during
-// phone-number pairing. Defaults to Chrome (Windows) if not called.
-func (s *Service) SetPairClient(clientType, displayName string) {
+// SetPairClient configures the pair client type and OS used during pairing.
+// This sets both the session-level fields (for phone code pairing) and the
+// global store.DeviceProps (for QR pairing) to keep them consistent.
+func (s *Service) SetPairClient(clientType, clientOS string) {
 	s.Session.pairClientType = clientType
-	s.Session.pairClientDisplayName = displayName
+	s.Session.pairClientOS = clientOS
+
+	// Set global DeviceProps for QR pairing.
+	info := s.Session.resolvePairClient()
+	store.SetOSInfo(clientOS, store.GetWAVersion())
+	store.DeviceProps.PlatformType = info.platformType.Enum()
 }
 
 // Client returns the underlying whatsmeow client.
@@ -151,13 +153,8 @@ func (s *Service) DeleteDevice() {
 
 // OpenContainer initializes a whatsmeow sqlstore container.
 func OpenContainer(ctx context.Context, driver, dsn string, logger *slog.Logger) (*sqlstore.Container, error) {
-	// SQLite requires foreign keys enabled for whatsmeow schema migrations.
-	if driver == "sqlite" && !strings.Contains(dsn, "foreign_keys") {
-		if strings.Contains(dsn, "?") {
-			dsn += "&_pragma=foreign_keys(1)"
-		} else {
-			dsn += "?_pragma=foreign_keys(1)"
-		}
+	if driver == "sqlite" {
+		dsn = applySQLitePragmas(dsn)
 	}
 
 	container, err := sqlstore.New(ctx, driver, dsn, NewSlogAdapter(logger))
@@ -165,4 +162,27 @@ func OpenContainer(ctx context.Context, driver, dsn string, logger *slog.Logger)
 		return nil, fmt.Errorf("open whatsmeow store: %w", err)
 	}
 	return container, nil
+}
+
+// applySQLitePragmas appends required SQLite pragmas to the DSN if missing.
+// WAL mode and busy_timeout are essential because whatsmeow and WSAPI use
+// separate connection pools against the same database file.
+func applySQLitePragmas(dsn string) string {
+	if !strings.Contains(dsn, "foreign_keys") {
+		dsn = appendPragma(dsn, "_pragma=foreign_keys(1)")
+	}
+	if !strings.Contains(dsn, "journal_mode") {
+		dsn = appendPragma(dsn, "_pragma=journal_mode(WAL)")
+	}
+	if !strings.Contains(dsn, "busy_timeout") {
+		dsn = appendPragma(dsn, "_pragma=busy_timeout(5000)")
+	}
+	return dsn
+}
+
+func appendPragma(dsn, pragma string) string {
+	if strings.Contains(dsn, "?") {
+		return dsn + "&" + pragma
+	}
+	return dsn + "?" + pragma
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 )
 
@@ -24,23 +23,10 @@ type ChatStore struct {
 	dialect string // "sqlite" or "postgres"
 }
 
-// OpenChatStore opens a connection to the whatsmeow database for the
-// wsapi_chats table. MigrateCustomTables must be called before this.
-func OpenChatStore(driver, dsn string) (*ChatStore, error) {
-	if driver == "sqlite" && !strings.Contains(dsn, "foreign_keys") {
-		if strings.Contains(dsn, "?") {
-			dsn += "&_pragma=foreign_keys(1)"
-		} else {
-			dsn += "?_pragma=foreign_keys(1)"
-		}
-	}
-
-	db, err := sql.Open(driver, dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open chat store: %w", err)
-	}
-
-	return &ChatStore{db: db, dialect: driver}, nil
+// NewChatStore creates a ChatStore using the given shared database pool.
+// MigrateCustomTables must be called before this.
+func NewChatStore(db *sql.DB, dialect string) *ChatStore {
+	return &ChatStore{db: db, dialect: dialect}
 }
 
 func (s *ChatStore) Upsert(ctx context.Context, rec ChatRecord) error {
@@ -147,6 +133,3 @@ func (s *ChatStore) Get(ctx context.Context, ourJID, chatJID string) (ChatRecord
 	return rec, nil
 }
 
-func (s *ChatStore) Close() error {
-	return s.db.Close()
-}

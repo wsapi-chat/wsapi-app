@@ -71,8 +71,7 @@ See [`.claude/development-guide.md`](.claude/development-guide.md) for detailed 
 
 ### Database Migrations
 
-- **App store** (`internal/store/`): append a new `migrateVN` function in `internal/store/migrate.go`
-- **WhatsApp store** (`internal/whatsapp/`): append a new `waMigrateVN` function in `internal/whatsapp/migrate.go`
+- Append a new `waMigrateVN` function in `internal/whatsapp/migrate.go` and add it to the `allWAMigrations` slice
 
 Never modify existing migrations.
 

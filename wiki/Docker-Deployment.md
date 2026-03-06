@@ -69,7 +69,7 @@ docker compose up -d
 
 | Container Path | Purpose |
 |----------------|---------|
-| `/app/data` | SQLite databases — `whatsmeow.db` (device sessions, always) and `wsapi.db` (instance records, multi mode only) |
+| `/app/data` | SQLite database (`wsapi.db`) — device sessions, instance records, chats, contacts |
 | `/app/config.yaml` | Configuration file (mount as read-only with `:ro`) |
 
 **Important:** Always mount `/app/data` as a volume to persist your WhatsApp sessions and databases across container restarts.

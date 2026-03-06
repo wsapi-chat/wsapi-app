@@ -40,7 +40,7 @@ curl http://localhost:8080/health
 
 ## Quick Start (Single Mode)
 
-Single mode is the default — a single `"default"` instance is used, so there is no need for instance management or an app store. No `X-Instance-Id` header is needed, and the admin API is not available. See [Instance Modes](Instance-Modes) for details.
+Single mode is the default — a single `"default"` instance is used, so there is no need for instance management. No `X-Instance-Id` header is needed, and the admin API is not available. See [Instance Modes](Instance-Modes) for details.
 
 ### 1. Pair your device
 

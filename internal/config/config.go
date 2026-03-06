@@ -60,11 +60,9 @@ type DatabaseConfig struct {
 }
 
 type WhatsmeowConfig struct {
-	Driver                string `yaml:"driver"`
-	DSN                   string `yaml:"dsn"`
-	LogLevel              string `yaml:"logLevel"`
-	PairClientType        string `yaml:"pairClientType"`
-	PairClientDisplayName string `yaml:"pairClientDisplayName"`
+	LogLevel       string `yaml:"logLevel"`
+	PairClientType string `yaml:"pairClientType"`
+	PairClientOS   string `yaml:"pairClientOs"`
 }
 
 type AuthConfig struct {
@@ -100,7 +98,8 @@ type RedisConfig struct {
 
 func defaults() *Config {
 	return &Config{
-		InstanceMode: "single",
+		InstanceMode:     "single",
+		EventsPublishVia: "webhook",
 		Server: ServerConfig{
 			Port:            8080,
 			ReadTimeout:     "30s",
@@ -112,11 +111,9 @@ func defaults() *Config {
 			DSN:    "./data/wsapi.db",
 		},
 		Whatsmeow: WhatsmeowConfig{
-			Driver:                "sqlite",
-			DSN:                   "./data/whatsmeow.db",
-			LogLevel:              "warn",
-			PairClientType:        "chrome",
-			PairClientDisplayName: "Chrome (Windows)",
+			LogLevel:       "warn",
+			PairClientType: "chrome",
+			PairClientOS:   "Windows",
 		},
 		Logging: LoggingConfig{
 			Level:     "info",
@@ -147,10 +144,8 @@ func Load(path string) (*Config, error) {
 	// Environment variable overrides
 	applyEnv(cfg)
 
-	// Normalize and validate instance mode.
-	cfg.InstanceMode = strings.ToLower(cfg.InstanceMode)
-	if cfg.InstanceMode != "single" && cfg.InstanceMode != "multi" {
-		return nil, fmt.Errorf("invalid instanceMode %q: must be \"single\" or \"multi\"", cfg.InstanceMode)
+	if err := validate(cfg); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
@@ -165,11 +160,9 @@ func applyEnv(cfg *Config) {
 
 	setIfEnv(&cfg.Database.Driver, "WSAPI_DB_DRIVER")
 	setIfEnv(&cfg.Database.DSN, "WSAPI_DB_DSN")
-	setIfEnv(&cfg.Whatsmeow.Driver, "WSAPI_WHATSMEOW_DB_DRIVER")
-	setIfEnv(&cfg.Whatsmeow.DSN, "WSAPI_WHATSMEOW_DB_DSN")
 	setIfEnv(&cfg.Whatsmeow.LogLevel, "WSAPI_WHATSMEOW_LOG_LEVEL")
 	setIfEnv(&cfg.Whatsmeow.PairClientType, "WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE")
-	setIfEnv(&cfg.Whatsmeow.PairClientDisplayName, "WSAPI_WHATSMEOW_PAIR_CLIENT_DISPLAY_NAME")
+	setIfEnv(&cfg.Whatsmeow.PairClientOS, "WSAPI_WHATSMEOW_PAIR_CLIENT_OS")
 	setIfEnv(&cfg.Auth.AdminAPIKey, "WSAPI_ADMIN_API_KEY")
 	setIfEnv(&cfg.Logging.Level, "WSAPI_LOG_LEVEL")
 	setIfEnv(&cfg.Logging.Format, "WSAPI_LOG_FORMAT")
@@ -256,6 +249,46 @@ func applyEnv(cfg *Config) {
 		}
 		cfg.Redis.SentinelPassword = v
 	}
+}
+
+func validate(cfg *Config) error {
+	checks := []struct {
+		field string
+		value *string
+		valid []string
+	}{
+		{"instanceMode", &cfg.InstanceMode, []string{"single", "multi"}},
+		{"eventsPublishVia", &cfg.EventsPublishVia, []string{"none", "webhook", "redis"}},
+		{"database.driver", &cfg.Database.Driver, []string{"sqlite", "postgres"}},
+		{"logging.level", &cfg.Logging.Level, []string{"debug", "info", "warn", "error"}},
+		{"logging.format", &cfg.Logging.Format, []string{"text", "json"}},
+		{"whatsmeow.logLevel", &cfg.Whatsmeow.LogLevel, []string{"debug", "info", "warn", "error"}},
+		{"whatsmeow.pairClientType", &cfg.Whatsmeow.PairClientType, []string{"chrome", "edge", "firefox", "opera", "safari"}},
+		{"whatsmeow.pairClientOs", &cfg.Whatsmeow.PairClientOS, []string{"Windows", "Linux", "macOS"}},
+	}
+
+	if cfg.Redis != nil && cfg.Redis.Mode != "" {
+		checks = append(checks, struct {
+			field string
+			value *string
+			valid []string
+		}{"redis.mode", &cfg.Redis.Mode, []string{"standalone", "sentinel"}})
+	}
+
+	for _, c := range checks {
+		found := false
+		for _, allowed := range c.valid {
+			if *c.value == allowed {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("invalid %s %q: must be one of %v", c.field, *c.value, c.valid)
+		}
+	}
+
+	return nil
 }
 
 func setIfEnv(target *string, key string) {

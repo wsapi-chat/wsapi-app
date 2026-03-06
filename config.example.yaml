@@ -5,15 +5,13 @@ server:
   shutdownTimeout: "10s"
 
 database:
-  driver: "sqlite" # "sqlite" or "postgres"
-  dsn: "./data/wsapi.db" # SQLite path or PostgreSQL connection string
+  driver: "sqlite" # "sqlite" or "postgres" (env: WSAPI_DB_DRIVER)
+  dsn: "./data/wsapi.db" # SQLite path or PostgreSQL connection string (env: WSAPI_DB_DSN)
 
 whatsmeow:
-  driver: "sqlite" # "sqlite" or "postgres" (env: WSAPI_WHATSMEOW_DB_DRIVER)
-  dsn: "./data/whatsmeow.db" # SQLite path or PostgreSQL connection string (env: WSAPI_WHATSMEOW_DB_DSN)
   logLevel: "warn" # debug, info, warn, error (env: WSAPI_WHATSMEOW_LOG_LEVEL)
   pairClientType: "chrome" # chrome, edge, firefox, opera, safari (env: WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE)
-  pairClientDisplayName: "Chrome (Windows)" # Display name shown during QR pairing (env: WSAPI_WHATSMEOW_PAIR_CLIENT_DISPLAY_NAME)
+  pairClientOs: "Windows" # Windows, Linux, macOS (env: WSAPI_WHATSMEOW_PAIR_CLIENT_OS)
 
 auth:
   adminApiKey: "" # API key for /admin/instances management, sent via X-Api-Key header (env: WSAPI_ADMIN_API_KEY)
@@ -36,7 +34,7 @@ instanceDefaults:
   eventFilters: [] # Default event filters (env: WSAPI_DEFAULT_EVENT_FILTERS)
   historySync: # Default history sync (env: WSAPI_DEFAULT_HISTORY_SYNC)
 
-eventsPublishVia: "none" # "webhook", "redis", or "none" (env: WSAPI_PUBLISH_VIA)
+eventsPublishVia: "webhook" # "webhook", "redis", or "none" (env: WSAPI_PUBLISH_VIA)
 
 
 # redis:                           # Optional Redis configuration

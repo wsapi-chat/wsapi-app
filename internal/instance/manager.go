@@ -18,7 +18,6 @@ import (
 	"github.com/wsapi-chat/wsapi-app/internal/event"
 	"github.com/wsapi-chat/wsapi-app/internal/publisher"
 	"github.com/wsapi-chat/wsapi-app/internal/server/middleware"
-	"github.com/wsapi-chat/wsapi-app/internal/store"
 	"github.com/wsapi-chat/wsapi-app/internal/whatsapp"
 )
 
@@ -27,7 +26,7 @@ import (
 type Manager struct {
 	mu               sync.RWMutex
 	instances        map[string]*Instance
-	store            store.Store
+	store            *whatsapp.InstanceStore
 	container        *sqlstore.Container
 	chatStore        *whatsapp.ChatStore
 	contactStore     *whatsapp.ContactStore
@@ -39,7 +38,7 @@ type Manager struct {
 }
 
 // NewManager creates a new instance manager.
-func NewManager(st store.Store, container *sqlstore.Container, chatStore *whatsapp.ChatStore, contactStore *whatsapp.ContactStore, historySyncStore *whatsapp.HistorySyncStore, cfg *config.Config, pubFactory *publisher.Factory, logger, waLogger *slog.Logger) *Manager {
+func NewManager(st *whatsapp.InstanceStore, container *sqlstore.Container, chatStore *whatsapp.ChatStore, contactStore *whatsapp.ContactStore, historySyncStore *whatsapp.HistorySyncStore, cfg *config.Config, pubFactory *publisher.Factory, logger, waLogger *slog.Logger) *Manager {
 	return &Manager{
 		instances:        make(map[string]*Instance),
 		store:            st,
@@ -169,7 +168,7 @@ func (m *Manager) CreateInstance(ctx context.Context, id string, cfg config.Inst
 	cfg.EventFilters = event.StripSystemEvents(cfg.EventFilters)
 
 	// Persist to store.
-	rec := store.InstanceRecord{
+	rec := whatsapp.InstanceRecord{
 		ID:            id,
 		APIKey:        cfg.APIKey,
 		WebhookURL:    cfg.WebhookURL,
@@ -262,7 +261,7 @@ func (m *Manager) UpdateInstanceConfig(ctx context.Context, id string, cfg confi
 	inst.Publisher = m.pubFact.Create(id, cfg.WebhookURL, cfg.SigningSecret)
 
 	// Persist updated record.
-	rec := store.InstanceRecord{
+	rec := whatsapp.InstanceRecord{
 		ID:            id,
 		APIKey:        cfg.APIKey,
 		WebhookURL:    cfg.WebhookURL,
@@ -435,7 +434,7 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 		instLogger.Error("failed to create whatsapp service", "error", err)
 		return inst
 	}
-	svc.SetPairClient(m.cfg.Whatsmeow.PairClientType, m.cfg.Whatsmeow.PairClientDisplayName)
+	svc.SetPairClient(m.cfg.Whatsmeow.PairClientType, m.cfg.Whatsmeow.PairClientOS)
 	inst.Service = svc
 
 	// Register the event handler that tracks chats and projects/publishes events.

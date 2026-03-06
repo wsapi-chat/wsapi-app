@@ -34,11 +34,9 @@ database:
   dsn: "./data/wsapi.db"     # SQLite path or PostgreSQL connection string
 
 whatsmeow:
-  driver: "sqlite"           # "sqlite" or "postgres"
-  dsn: "./data/whatsmeow.db" # SQLite path or PostgreSQL connection string
   logLevel: "warn"           # debug, info, warn, error
   pairClientType: "chrome"   # chrome, edge, firefox, opera, safari
-  pairClientDisplayName: "Chrome (Windows)"
+  pairClientOs: "Windows"    # OS name shown in WhatsApp Linked Devices
 
 auth:
   adminApiKey: ""            # API key for /admin/instances
@@ -59,7 +57,7 @@ instanceDefaults:
   eventFilters: []           # default event filters
   historySync:               # default history sync (true/false)
 
-eventsPublishVia: "none"     # "webhook", "redis", or "none"
+eventsPublishVia: "webhook"  # "webhook", "redis", or "none"
 
 redis:
   mode: "standalone"         # "standalone" or "sentinel"
@@ -88,10 +86,8 @@ All variables are optional — defaults are used when not set.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `WSAPI_DB_DRIVER` | App store driver (`sqlite`/`postgres`). Multi mode only. | `sqlite` |
-| `WSAPI_DB_DSN` | App store DSN. Multi mode only. | `./data/wsapi.db` |
-| `WSAPI_WHATSMEOW_DB_DRIVER` | whatsmeow DB driver (`sqlite`/`postgres`) | `sqlite` |
-| `WSAPI_WHATSMEOW_DB_DSN` | whatsmeow DB DSN | `./data/whatsmeow.db` |
+| `WSAPI_DB_DRIVER` | Database driver (`sqlite`/`postgres`) | `sqlite` |
+| `WSAPI_DB_DSN` | Database DSN | `./data/wsapi.db` |
 
 ### Authentication
 
@@ -114,7 +110,7 @@ All variables are optional — defaults are used when not set.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE` | Pair client type (`chrome`, `edge`, `firefox`, `opera`, `safari`) | `chrome` |
-| `WSAPI_WHATSMEOW_PAIR_CLIENT_DISPLAY_NAME` | Display name shown during pairing | `Chrome (Windows)` |
+| `WSAPI_WHATSMEOW_PAIR_CLIENT_OS` | OS name shown in WhatsApp Linked Devices (`Windows`, `Linux`, `macOS`) | `Windows` |
 
 ### Instance Defaults
 
@@ -129,7 +125,7 @@ All variables are optional — defaults are used when not set.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `WSAPI_PUBLISH_VIA` | Event publish method: `"webhook"`, `"redis"`, or `"none"` | |
+| `WSAPI_PUBLISH_VIA` | Event publish method: `"webhook"`, `"redis"`, or `"none"` | `webhook` |
 | `WSAPI_HTTP_PROXY` | HTTP proxy URL for outbound requests | |
 
 ### Redis
@@ -149,13 +145,8 @@ All variables are optional — defaults are used when not set.
 ## PostgreSQL Connection Strings
 
 ```bash
-# App store
 WSAPI_DB_DRIVER=postgres
 WSAPI_DB_DSN="postgres://user:pass@localhost:5432/wsapi?sslmode=disable"
-
-# whatsmeow
-WSAPI_WHATSMEOW_DB_DRIVER=postgres
-WSAPI_WHATSMEOW_DB_DSN="postgres://user:pass@localhost:5432/whatsmeow?sslmode=disable"
 ```
 
 See [Database Setup](Database-Setup) for more details on database configuration.
