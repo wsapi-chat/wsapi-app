@@ -9,7 +9,7 @@ WSAPI supports two instance modes, controlled by `WSAPI_INSTANCE_MODE` (or `inst
 | Instance count | 1 | Unlimited (managed via admin API) |
 | `X-Instance-Id` header | Not needed | Required on all instance endpoints |
 | Admin API (`/admin/instances/*`) | Not registered (404) | Available |
-| App store database (`WSAPI_DB_*`) | Not used | Required |
+| Instance persistence (`wsapi_instances` table) | Not used | Automatic |
 | Config source | Environment variables / config.yaml | Admin API + defaults from env/yaml |
 
 ## Single Mode
@@ -18,7 +18,7 @@ Single mode is the simplest way to run WSAPI — one WhatsApp session with no in
 
 **How it works:**
 
-1. On startup, the manager calls `EnsureSingleInstance()` which sets up a fixed `"default"` instance — since there is only one instance, the app store (`wsapi.db`) is not needed and is never created
+1. On startup, the manager calls `EnsureSingleInstance()` which sets up a fixed `"default"` instance
 2. The device session is resolved directly from the whatsmeow DB via `GetFirstDevice()`, so your WhatsApp session survives restarts
 3. Instance config (API key, webhook URL, etc.) always comes from `instanceDefaults` in your config.yaml or environment variables
 4. The `X-Instance-Id` header is not required on API requests since there is only one instance and ignored if provided
@@ -37,9 +37,9 @@ curl http://localhost:8080/session/status \
 - `WSAPI_DEFAULT_SIGNING_SECRET` — HMAC signing secret
 - `WSAPI_DEFAULT_EVENT_FILTERS` — comma-separated event filter list
 - `WSAPI_DEFAULT_HISTORY_SYNC` — enable history sync (`true`/`false`)
-- `WSAPI_WHATSMEOW_DB_DRIVER` / `WSAPI_WHATSMEOW_DB_DSN` — whatsmeow database
+- `WSAPI_DB_DRIVER` / `WSAPI_DB_DSN` — database
 
-Variables **not used** in single mode: `WSAPI_DB_DRIVER`, `WSAPI_DB_DSN`, `WSAPI_ADMIN_API_KEY`.
+Variables **not used** in single mode: `WSAPI_ADMIN_API_KEY`.
 
 ## Multi Mode
 
@@ -47,7 +47,7 @@ Multi mode lets you run multiple independent WhatsApp sessions behind a single W
 
 **How it works:**
 
-1. On startup, the manager calls `RestoreInstances()` to load all persisted instances from the wsapi store
+1. On startup, the manager calls `RestoreInstances()` to load all persisted instances from the database
 2. Instances are created, updated, and deleted via the admin API (`/admin/instances/*`)
 3. Each instance has its own device session, API key, webhook URL, signing secret, event filters, and history sync setting
 4. The `InstanceAuth` middleware resolves `X-Instance-Id` to the correct instance and validates `X-Api-Key`
@@ -85,5 +85,4 @@ curl http://localhost:8080/session/status \
 
 **Applicable environment variables (in addition to single mode vars):**
 
-- `WSAPI_DB_DRIVER` / `WSAPI_DB_DSN` — app store database for persisting instance records
 - `WSAPI_ADMIN_API_KEY` — API key for admin endpoints

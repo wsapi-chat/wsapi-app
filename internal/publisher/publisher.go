@@ -26,12 +26,16 @@ type Factory struct {
 func NewFactory(cfg *config.Config, logger *slog.Logger) *Factory {
 	f := &Factory{cfg: cfg, logger: logger}
 
-	if cfg.Redis != nil && cfg.Redis.URL != "" {
-		rp, err := NewRedisPublisher(cfg.Redis, logger)
-		if err != nil {
-			logger.Warn("failed to initialize Redis publisher", "error", err)
+	if cfg.EventsPublishVia == "redis" {
+		if cfg.Redis == nil || cfg.Redis.URL == "" {
+			logger.Warn("eventsPublishVia is \"redis\" but no Redis configuration provided, events will be discarded")
 		} else {
-			f.redis = rp
+			rp, err := NewRedisPublisher(cfg.Redis, logger)
+			if err != nil {
+				logger.Warn("failed to initialize Redis publisher", "error", err)
+			} else {
+				f.redis = rp
+			}
 		}
 	}
 
@@ -46,7 +50,7 @@ func (f *Factory) Create(instanceID, webhookURL, signingSecret string) Publisher
 		if webhookURL != "" {
 			return NewWebhookPublisher(instanceID, webhookURL, signingSecret, f.logger)
 		}
-		f.logger.Warn("publishVia is webhook but no webhook URL configured, falling back to noop", "instanceId", instanceID)
+		f.logger.Warn("eventsPublishVia is \"webhook\" but no webhook URL configured for instance, events will be discarded", "instanceId", instanceID)
 
 	case "redis":
 		if f.redis != nil {
@@ -56,7 +60,6 @@ func (f *Factory) Create(instanceID, webhookURL, signingSecret string) Publisher
 				signature:  signingSecret,
 			}
 		}
-		f.logger.Warn("publishVia is redis but Redis is not configured, falling back to noop", "instanceId", instanceID)
 	}
 
 	return NewNoopPublisher(f.logger)

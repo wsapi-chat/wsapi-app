@@ -9,30 +9,38 @@ import (
 
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/proto/waCompanionReg"
 )
 
 // SessionService wraps the whatsmeow client for session management operations.
 type SessionService struct {
-	client                *whatsmeow.Client
-	logger                *slog.Logger
-	pairClientType        string
-	pairClientDisplayName string
+	client         *whatsmeow.Client
+	logger         *slog.Logger
+	pairClientType string
+	pairClientOS   string
 }
 
-// resolvePairClientType maps a config string to the whatsmeow PairClientType.
-func (s *SessionService) resolvePairClientType() whatsmeow.PairClientType {
-	switch strings.ToLower(s.pairClientType) {
-	case "edge":
-		return whatsmeow.PairClientEdge
-	case "firefox":
-		return whatsmeow.PairClientFirefox
-	case "opera":
-		return whatsmeow.PairClientOpera
-	case "safari":
-		return whatsmeow.PairClientSafari
-	default:
-		return whatsmeow.PairClientChrome
+// pairClientInfo holds the whatsmeow PairClientType, DeviceProps PlatformType,
+// and the display name used in the "Browser (OS)" string for phone code pairing.
+type pairClientInfo struct {
+	pairType     whatsmeow.PairClientType
+	platformType waCompanionReg.DeviceProps_PlatformType
+	displayName  string
+}
+
+var pairClientMap = map[string]pairClientInfo{
+	"chrome":  {whatsmeow.PairClientChrome, waCompanionReg.DeviceProps_CHROME, "Chrome"},
+	"edge":    {whatsmeow.PairClientEdge, waCompanionReg.DeviceProps_EDGE, "Edge"},
+	"firefox": {whatsmeow.PairClientFirefox, waCompanionReg.DeviceProps_FIREFOX, "Firefox"},
+	"opera":   {whatsmeow.PairClientOpera, waCompanionReg.DeviceProps_OPERA, "Opera"},
+	"safari":  {whatsmeow.PairClientSafari, waCompanionReg.DeviceProps_SAFARI, "Safari"},
+}
+
+func (s *SessionService) resolvePairClient() pairClientInfo {
+	if info, ok := pairClientMap[strings.ToLower(s.pairClientType)]; ok {
+		return info
 	}
+	return pairClientMap["chrome"]
 }
 
 // Connect establishes a connection to WhatsApp.
@@ -152,7 +160,9 @@ func (s *SessionService) GeneratePairCode(ctx context.Context, phone string) (st
 	// Allow the connection to establish before requesting a pair code.
 	time.Sleep(3 * time.Second)
 
-	return s.client.PairPhone(ctx, phone, true, s.resolvePairClientType(), s.pairClientDisplayName)
+	info := s.resolvePairClient()
+	displayName := info.displayName + " (" + s.pairClientOS + ")"
+	return s.client.PairPhone(ctx, phone, true, info.pairType, displayName)
 }
 
 // IsConnected reports whether the client is connected to WhatsApp.

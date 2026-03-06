@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -19,9 +20,11 @@ import (
 	"github.com/wsapi-chat/wsapi-app/internal/publisher"
 	"github.com/wsapi-chat/wsapi-app/internal/server"
 	"github.com/wsapi-chat/wsapi-app/internal/server/middleware"
-	"github.com/wsapi-chat/wsapi-app/internal/store"
 	"github.com/wsapi-chat/wsapi-app/internal/validate"
 	"github.com/wsapi-chat/wsapi-app/internal/whatsapp"
+
+	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -48,60 +51,42 @@ func main() {
 	// Initialize validator
 	validate.Init()
 
-	// Initialize WSAPI store (instance persistence) — only needed in multi mode.
-	var st store.Store
-	if cfg.InstanceMode != "single" {
-		var err error
-		st, err = store.Open(cfg.Database.Driver, cfg.Database.DSN)
-		if err != nil {
-			logger.Error("failed to open store", "error", err)
-			os.Exit(1)
-		}
-		defer st.Close() //nolint:errcheck
+	// Open single shared DB connection pool
+	db, err := openDB(cfg.Database.Driver, cfg.Database.DSN)
+	if err != nil {
+		logger.Error("failed to open database", "error", err)
+		os.Exit(1)
 	}
+	defer db.Close() //nolint:errcheck
 
-	// Initialize whatsmeow container (device sessions)
-	waContainer, err := whatsapp.OpenContainer(context.Background(), cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN, waLogger)
+	// Initialize whatsmeow container (device sessions, uses same driver/dsn)
+	waContainer, err := whatsapp.OpenContainer(context.Background(), cfg.Database.Driver, cfg.Database.DSN, waLogger)
 	if err != nil {
 		logger.Error("failed to open whatsmeow store", "error", err)
 		os.Exit(1)
 	}
 
-	// Run migrations for WSAPI custom tables in whatsmeow DB
-	if err := whatsapp.MigrateCustomTables(cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN); err != nil {
-		logger.Error("failed to migrate whatsmeow custom tables", "error", err)
+	// Run migrations for WSAPI custom tables
+	if err := whatsapp.MigrateCustomTables(db, cfg.Database.Driver); err != nil {
+		logger.Error("failed to migrate custom tables", "error", err)
 		os.Exit(1)
 	}
 
-	// Initialize chat store (wsapi_chats table in whatsmeow DB)
-	chatStore, err := whatsapp.OpenChatStore(cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN)
-	if err != nil {
-		logger.Error("failed to open chat store", "error", err)
-		os.Exit(1)
-	}
-	defer chatStore.Close() //nolint:errcheck
+	// Create stores (all share the same pool)
+	chatStore := whatsapp.NewChatStore(db, cfg.Database.Driver)
+	contactStore := whatsapp.NewContactStore(db, cfg.Database.Driver)
+	historySyncStore := whatsapp.NewHistorySyncStore(db, cfg.Database.Driver)
 
-	// Initialize contact store (wsapi_contacts table in whatsmeow DB)
-	contactStore, err := whatsapp.OpenContactStore(cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN)
-	if err != nil {
-		logger.Error("failed to open contact store", "error", err)
-		os.Exit(1)
+	var instanceStore *whatsapp.InstanceStore
+	if cfg.InstanceMode != "single" {
+		instanceStore = whatsapp.NewInstanceStore(db, cfg.Database.Driver)
 	}
-	defer contactStore.Close() //nolint:errcheck
-
-	// Initialize history sync store (wsapi_history_sync_messages table in whatsmeow DB)
-	historySyncStore, err := whatsapp.OpenHistorySyncStore(cfg.Whatsmeow.Driver, cfg.Whatsmeow.DSN)
-	if err != nil {
-		logger.Error("failed to open history sync store", "error", err)
-		os.Exit(1)
-	}
-	defer historySyncStore.Close() //nolint:errcheck
 
 	// Initialize publisher factory (used per instance)
 	pubFactory := publisher.NewFactory(cfg, logger)
 
 	// Initialize instance manager
-	mgr := instance.NewManager(st, waContainer, chatStore, contactStore, historySyncStore, cfg, pubFactory, logger, waLogger)
+	mgr := instance.NewManager(instanceStore, waContainer, chatStore, contactStore, historySyncStore, cfg, pubFactory, logger, waLogger)
 
 	// Provision instances based on mode
 	if cfg.InstanceMode == "single" {
@@ -217,6 +202,49 @@ func main() {
 		logger.Error("server error", "error", err)
 		os.Exit(1)
 	}
+}
+
+// openDB opens a database connection pool and applies driver-specific pragmas.
+func openDB(driver, dsn string) (*sql.DB, error) {
+	dsn = applySQLitePragmas(driver, dsn)
+
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return db, nil
+}
+
+// applySQLitePragmas appends SQLite pragmas (foreign_keys, journal_mode=WAL,
+// busy_timeout) to the DSN if missing. WAL mode and busy_timeout are essential
+// because whatsmeow and WSAPI use separate connection pools against the same file.
+func applySQLitePragmas(driver, dsn string) string {
+	if driver != "sqlite" {
+		return dsn
+	}
+	if !strings.Contains(dsn, "foreign_keys") {
+		dsn = appendPragma(dsn, "_pragma=foreign_keys(1)")
+	}
+	if !strings.Contains(dsn, "journal_mode") {
+		dsn = appendPragma(dsn, "_pragma=journal_mode(WAL)")
+	}
+	if !strings.Contains(dsn, "busy_timeout") {
+		dsn = appendPragma(dsn, "_pragma=busy_timeout(5000)")
+	}
+	return dsn
+}
+
+func appendPragma(dsn, pragma string) string {
+	if strings.Contains(dsn, "?") {
+		return dsn + "&" + pragma
+	}
+	return dsn + "?" + pragma
 }
 
 func parseLogLevel(s string) slog.Level {

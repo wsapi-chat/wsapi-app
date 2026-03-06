@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 )
 
 // ContactRecord tracks a saved contact for a device.
@@ -25,23 +24,10 @@ type ContactStore struct {
 	dialect string // "sqlite" or "postgres"
 }
 
-// OpenContactStore opens a connection to the whatsmeow database for the
-// wsapi_contacts table. MigrateCustomTables must be called before this.
-func OpenContactStore(driver, dsn string) (*ContactStore, error) {
-	if driver == "sqlite" && !strings.Contains(dsn, "foreign_keys") {
-		if strings.Contains(dsn, "?") {
-			dsn += "&_pragma=foreign_keys(1)"
-		} else {
-			dsn += "?_pragma=foreign_keys(1)"
-		}
-	}
-
-	db, err := sql.Open(driver, dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open contact store: %w", err)
-	}
-
-	return &ContactStore{db: db, dialect: driver}, nil
+// NewContactStore creates a ContactStore using the given shared database pool.
+// MigrateCustomTables must be called before this.
+func NewContactStore(db *sql.DB, dialect string) *ContactStore {
+	return &ContactStore{db: db, dialect: dialect}
 }
 
 func (s *ContactStore) Upsert(ctx context.Context, rec ContactRecord) error {
@@ -138,8 +124,4 @@ func (s *ContactStore) Get(ctx context.Context, ourJID, contactJID string) (Cont
 		return rec, fmt.Errorf("get contact %s: %w", contactJID, err)
 	}
 	return rec, nil
-}
-
-func (s *ContactStore) Close() error {
-	return s.db.Close()
 }
