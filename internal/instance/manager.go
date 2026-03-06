@@ -32,13 +32,13 @@ type Manager struct {
 	contactStore     *whatsapp.ContactStore
 	historySyncStore *whatsapp.HistorySyncStore
 	cfg              *config.Config
-	pubFact          *publisher.Factory
+	pubFact          publisher.PublisherFactory
 	logger           *slog.Logger
 	waLogger         *slog.Logger
 }
 
 // NewManager creates a new instance manager.
-func NewManager(st *whatsapp.InstanceStore, container *sqlstore.Container, chatStore *whatsapp.ChatStore, contactStore *whatsapp.ContactStore, historySyncStore *whatsapp.HistorySyncStore, cfg *config.Config, pubFactory *publisher.Factory, logger, waLogger *slog.Logger) *Manager {
+func NewManager(st *whatsapp.InstanceStore, container *sqlstore.Container, chatStore *whatsapp.ChatStore, contactStore *whatsapp.ContactStore, historySyncStore *whatsapp.HistorySyncStore, cfg *config.Config, pubFactory publisher.PublisherFactory, logger, waLogger *slog.Logger) *Manager {
 	return &Manager{
 		instances:        make(map[string]*Instance),
 		store:            st,

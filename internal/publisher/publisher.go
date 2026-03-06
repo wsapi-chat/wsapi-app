@@ -14,6 +14,12 @@ type Publisher interface {
 	Close() error
 }
 
+// PublisherFactory creates publishers based on instance configuration.
+type PublisherFactory interface {
+	Create(instanceID, webhookURL, signingSecret string) Publisher
+	Close() error
+}
+
 // Factory creates publishers based on instance configuration.
 type Factory struct {
 	cfg    *config.Config
@@ -45,24 +51,32 @@ func NewFactory(cfg *config.Config, logger *slog.Logger) *Factory {
 // Create returns a Publisher for the given instance based on the global
 // publishVia setting. The caller (manager) resolves defaults before calling.
 func (f *Factory) Create(instanceID, webhookURL, signingSecret string) Publisher {
+	var pub Publisher
+
 	switch f.cfg.EventsPublishVia {
 	case "webhook":
 		if webhookURL != "" {
-			return NewWebhookPublisher(instanceID, webhookURL, signingSecret, f.logger)
+			pub = NewWebhookPublisher(instanceID, webhookURL, signingSecret, f.logger)
+		} else {
+			f.logger.Warn("eventsPublishVia is \"webhook\" but no webhook URL configured for instance, events will be discarded", "instanceId", instanceID)
 		}
-		f.logger.Warn("eventsPublishVia is \"webhook\" but no webhook URL configured for instance, events will be discarded", "instanceId", instanceID)
 
 	case "redis":
 		if f.redis != nil {
-			return &redisWrapper{
+			pub = &redisWrapper{
 				rp:         f.redis,
 				instanceID: instanceID,
 				signature:  signingSecret,
 			}
+		} else {
+			f.logger.Warn("eventsPublishVia is \"redis\" but Redis is not configured for instance, events will be discarded", "instanceId", instanceID)
 		}
 	}
 
-	return NewNoopPublisher(f.logger)
+	if pub == nil {
+		pub = NewNoopPublisher(f.logger)
+	}
+	return pub
 }
 
 // Close shuts down shared resources (e.g. Redis connection).
