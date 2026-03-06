@@ -125,4 +125,3 @@ func (s *ContactStore) Get(ctx context.Context, ourJID, contactJID string) (Cont
 	}
 	return rec, nil
 }
-

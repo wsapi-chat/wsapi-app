@@ -132,4 +132,3 @@ func (s *ChatStore) Get(ctx context.Context, ourJID, chatJID string) (ChatRecord
 	}
 	return rec, nil
 }
-

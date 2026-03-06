@@ -127,4 +127,3 @@ func (s *HistorySyncStore) DeleteAll(ctx context.Context, ourJID string) error {
 	}
 	return nil
 }
-
