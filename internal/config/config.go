@@ -94,6 +94,7 @@ type RedisConfig struct {
 	TLSInsecure      bool   `yaml:"tlsInsecure"`      // Skip TLS certificate verification
 	MasterName       string `yaml:"masterName"`       // Sentinel master name (default: "mymaster")
 	SentinelPassword string `yaml:"sentinelPassword"` // Sentinel auth password (if different from Redis password)
+	MaxRetries       int    `yaml:"maxRetries"`       // Max retries per command (default: 50)
 }
 
 func defaults() *Config {
@@ -248,6 +249,14 @@ func applyEnv(cfg *Config) {
 			cfg.Redis = &RedisConfig{}
 		}
 		cfg.Redis.SentinelPassword = v
+	}
+	if v := os.Getenv("WSAPI_REDIS_MAX_RETRIES"); v != "" {
+		if cfg.Redis == nil {
+			cfg.Redis = &RedisConfig{}
+		}
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Redis.MaxRetries = n
+		}
 	}
 }
 
