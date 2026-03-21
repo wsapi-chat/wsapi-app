@@ -36,12 +36,7 @@ func NewFactory(cfg *config.Config, logger *slog.Logger) *Factory {
 		if cfg.Redis == nil || cfg.Redis.URL == "" {
 			logger.Warn("eventsPublishVia is \"redis\" but no Redis configuration provided, events will be discarded")
 		} else {
-			rp, err := NewRedisPublisher(cfg.Redis, logger)
-			if err != nil {
-				logger.Warn("failed to initialize Redis publisher", "error", err)
-			} else {
-				f.redis = rp
-			}
+			f.redis = NewRedisPublisher(cfg.Redis, logger)
 		}
 	}
 
