@@ -21,13 +21,20 @@ type RedisPublisher struct {
 	logger     *slog.Logger
 }
 
-// NewRedisPublisher creates a shared Redis publisher.
-func NewRedisPublisher(cfg *config.RedisConfig, logger *slog.Logger) (*RedisPublisher, error) {
+// NewRedisPublisher creates a shared Redis publisher. The client connects
+// lazily — if Redis is temporarily unavailable at startup, individual publish
+// calls will fail and be logged, but will succeed once Redis recovers.
+func NewRedisPublisher(cfg *config.RedisConfig, logger *slog.Logger) *RedisPublisher {
 	var tlsCfg *tls.Config
 	if cfg.TLS {
 		tlsCfg = &tls.Config{
 			InsecureSkipVerify: cfg.TLSInsecure,
 		}
+	}
+
+	maxRetries := cfg.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = 50
 	}
 
 	var rdb *redis.Client
@@ -55,7 +62,7 @@ func NewRedisPublisher(cfg *config.RedisConfig, logger *slog.Logger) (*RedisPubl
 			WriteTimeout:     3 * time.Second,
 			PoolSize:         10,
 			MinIdleConns:     2,
-			MaxRetries:       5,
+			MaxRetries:       maxRetries,
 		})
 		logger.Info("Redis client configured for Sentinel mode", "masterName", masterName, "sentinelAddrs", addrs)
 
@@ -70,23 +77,16 @@ func NewRedisPublisher(cfg *config.RedisConfig, logger *slog.Logger) (*RedisPubl
 			WriteTimeout: 3 * time.Second,
 			PoolSize:     10,
 			MinIdleConns: 2,
-			MaxRetries:   5,
+			MaxRetries:   maxRetries,
 		})
 		logger.Info("Redis client configured for Standalone mode", "addr", cfg.URL, "db", cfg.DB, "tls", cfg.TLS)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("redis ping: %w", err)
 	}
 
 	return &RedisPublisher{
 		client:     rdb,
 		streamName: cfg.StreamName,
 		logger:     logger.With("publisher", "redis"),
-	}, nil
+	}
 }
 
 func (p *RedisPublisher) publish(ctx context.Context, evt event.Event, instanceID, signingSecret string) error {
