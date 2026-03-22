@@ -556,6 +556,12 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 					instLogger.Error("failed to persist logout state", "error", err)
 				}
 			}
+			// Mark the store as uninitialized so that re-pairing triggers
+			// initializeDevice (which creates sub-stores scoped to the new JID).
+			// Without this, the SQLStore.JID still references the old device JID
+			// after whatsmeow's Store.Delete(), causing FK constraint violations
+			// when PutIdentity runs during handlePair.
+			waClient.Store.Initialized = false
 			// Publish logged_out directly rather than relying on the projector
 			// pipeline below. During a 401-on-connect the handler queue may
 			// shut down before Part 3 completes; publishing here guarantees
