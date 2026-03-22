@@ -427,12 +427,26 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 		Logger:    instLogger,
 	}
 
-	// Create WhatsApp service.
+	if err := m.initService(ctx, inst, deviceID); err != nil {
+		instLogger.Error("failed to create whatsapp service", "error", err)
+	}
+
+	return inst
+}
+
+// initService creates a new WhatsApp service for the given instance and
+// registers the event handler. deviceID may be empty for new/unlinked instances.
+// On success the instance's Service field is replaced with the new service.
+func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID string) error {
+	id := inst.ID
+	instLogger := inst.Logger
+	pub := inst.Publisher
+	cfg := inst.Config
+
 	waInstLogger := m.waLogger.With("instanceId", id)
 	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore)
 	if err != nil {
-		instLogger.Error("failed to create whatsapp service", "error", err)
-		return inst
+		return fmt.Errorf("create whatsapp service: %w", err)
 	}
 	svc.SetPairClient(m.cfg.Whatsmeow.PairClientType, m.cfg.Whatsmeow.PairClientOS)
 	inst.Service = svc
@@ -556,12 +570,6 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 					instLogger.Error("failed to persist logout state", "error", err)
 				}
 			}
-			// Mark the store as uninitialized so that re-pairing triggers
-			// initializeDevice (which creates sub-stores scoped to the new JID).
-			// Without this, the SQLStore.JID still references the old device JID
-			// after whatsmeow's Store.Delete(), causing FK constraint violations
-			// when PutIdentity runs during handlePair.
-			waClient.Store.Initialized = false
 			// Publish logged_out directly rather than relying on the projector
 			// pipeline below. During a 401-on-connect the handler queue may
 			// shut down before Part 3 completes; publishing here guarantees
@@ -572,6 +580,10 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 			if err := pub.Publish(context.Background(), logoutEvt); err != nil {
 				instLogger.Error("failed to publish event", "type", logoutEvt.EventType, "error", err)
 			}
+			// Rebuild the service with a fresh device store so re-pairing
+			// works without FK constraint violations. This runs async because
+			// we are inside the old client's event handler goroutine.
+			go m.rebuildInstanceService(id)
 			return
 		case *waEvents.AppStateSyncComplete:
 			if e.Recovery {
@@ -616,7 +628,31 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 		}
 	}
 
-	return inst
+	return nil
+}
+
+// rebuildInstanceService replaces the WhatsApp service on an existing instance
+// with a fresh device store. Called after a server-side logout so re-pairing
+// starts clean without FK constraint violations from stale device data.
+func (m *Manager) rebuildInstanceService(id string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	inst, ok := m.instances[id]
+	if !ok {
+		return
+	}
+
+	// Disconnect the old client before replacing.
+	if inst.Service != nil {
+		inst.Service.Disconnect()
+	}
+
+	if err := m.initService(context.Background(), inst, ""); err != nil {
+		inst.Logger.Error("failed to rebuild service after logout", "error", err)
+	} else {
+		inst.Logger.Info("service rebuilt after server-side logout")
+	}
 }
 
 // isBroadcast returns true if the JID is a broadcast JID (status broadcast
