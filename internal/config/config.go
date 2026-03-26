@@ -95,6 +95,11 @@ type RedisConfig struct {
 	MasterName       string `yaml:"masterName"`       // Sentinel master name (default: "mymaster")
 	SentinelPassword string `yaml:"sentinelPassword"` // Sentinel auth password (if different from Redis password)
 	MaxRetries       int    `yaml:"maxRetries"`       // Max retries per command (default: 50)
+	PoolSize         int    `yaml:"poolSize"`         // Max number of socket connections (default: 3)
+	MinIdleConns     int    `yaml:"minIdleConns"`     // Min idle connections kept open (default: 0)
+	MaxIdleConns     int    `yaml:"maxIdleConns"`     // Max idle connections kept open (default: 1)
+	ConnMaxIdleTime  string `yaml:"connMaxIdleTime"`  // Max time a connection can be idle before being closed (default: "3m")
+	ConnMaxLifetime  string `yaml:"connMaxLifetime"`  // Max lifetime of a connection before being recycled (default: "30m")
 }
 
 func defaults() *Config {
@@ -257,6 +262,42 @@ func applyEnv(cfg *Config) {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.Redis.MaxRetries = n
 		}
+	}
+	if v := os.Getenv("WSAPI_REDIS_POOL_SIZE"); v != "" {
+		if cfg.Redis == nil {
+			cfg.Redis = &RedisConfig{}
+		}
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Redis.PoolSize = n
+		}
+	}
+	if v := os.Getenv("WSAPI_REDIS_MIN_IDLE_CONNS"); v != "" {
+		if cfg.Redis == nil {
+			cfg.Redis = &RedisConfig{}
+		}
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Redis.MinIdleConns = n
+		}
+	}
+	if v := os.Getenv("WSAPI_REDIS_MAX_IDLE_CONNS"); v != "" {
+		if cfg.Redis == nil {
+			cfg.Redis = &RedisConfig{}
+		}
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Redis.MaxIdleConns = n
+		}
+	}
+	if v := os.Getenv("WSAPI_REDIS_CONN_MAX_IDLE_TIME"); v != "" {
+		if cfg.Redis == nil {
+			cfg.Redis = &RedisConfig{}
+		}
+		cfg.Redis.ConnMaxIdleTime = v
+	}
+	if v := os.Getenv("WSAPI_REDIS_CONN_MAX_LIFETIME"); v != "" {
+		if cfg.Redis == nil {
+			cfg.Redis = &RedisConfig{}
+		}
+		cfg.Redis.ConnMaxLifetime = v
 	}
 }
 

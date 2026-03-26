@@ -84,9 +84,11 @@ func main() {
 
 	// Initialize publisher factory (used per instance)
 	pubFactory := publisher.NewFactory(cfg, logger)
+	defer pubFactory.Close() //nolint:errcheck
 
 	// Initialize instance manager
 	mgr := instance.NewManager(instanceStore, waContainer, chatStore, contactStore, historySyncStore, cfg, pubFactory, logger, waLogger)
+	defer mgr.Shutdown()
 
 	// Provision instances based on mode
 	if cfg.InstanceMode == "single" {

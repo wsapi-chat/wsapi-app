@@ -37,6 +37,17 @@ func NewRedisPublisher(cfg *config.RedisConfig, logger *slog.Logger) *RedisPubli
 		maxRetries = 50
 	}
 
+	poolSize := cfg.PoolSize
+	if poolSize == 0 {
+		poolSize = 3
+	}
+	maxIdleConns := cfg.MaxIdleConns
+	if maxIdleConns == 0 {
+		maxIdleConns = 1
+	}
+	connMaxIdleTime := parseDurationDefault(cfg.ConnMaxIdleTime, 3*time.Minute)
+	connMaxLifetime := parseDurationDefault(cfg.ConnMaxLifetime, 30*time.Minute)
+
 	var rdb *redis.Client
 
 	switch strings.ToLower(cfg.Mode) {
@@ -60,24 +71,30 @@ func NewRedisPublisher(cfg *config.RedisConfig, logger *slog.Logger) *RedisPubli
 			DialTimeout:      5 * time.Second,
 			ReadTimeout:      3 * time.Second,
 			WriteTimeout:     3 * time.Second,
-			PoolSize:         10,
-			MinIdleConns:     2,
+			PoolSize:         poolSize,
+			MinIdleConns:     cfg.MinIdleConns,
+			MaxIdleConns:     maxIdleConns,
+			ConnMaxIdleTime:  connMaxIdleTime,
+			ConnMaxLifetime:  connMaxLifetime,
 			MaxRetries:       maxRetries,
 		})
 		logger.Info("Redis client configured for Sentinel mode", "masterName", masterName, "sentinelAddrs", addrs)
 
 	default:
 		rdb = redis.NewClient(&redis.Options{
-			Addr:         cfg.URL,
-			Password:     cfg.Password,
-			DB:           cfg.DB,
-			TLSConfig:    tlsCfg,
-			DialTimeout:  5 * time.Second,
-			ReadTimeout:  3 * time.Second,
-			WriteTimeout: 3 * time.Second,
-			PoolSize:     10,
-			MinIdleConns: 2,
-			MaxRetries:   maxRetries,
+			Addr:            cfg.URL,
+			Password:        cfg.Password,
+			DB:              cfg.DB,
+			TLSConfig:       tlsCfg,
+			DialTimeout:     5 * time.Second,
+			ReadTimeout:     3 * time.Second,
+			WriteTimeout:    3 * time.Second,
+			PoolSize:        poolSize,
+			MinIdleConns:    cfg.MinIdleConns,
+			MaxIdleConns:    maxIdleConns,
+			ConnMaxIdleTime: connMaxIdleTime,
+			ConnMaxLifetime: connMaxLifetime,
+			MaxRetries:      maxRetries,
 		})
 		logger.Info("Redis client configured for Standalone mode", "addr", cfg.URL, "db", cfg.DB, "tls", cfg.TLS)
 	}
@@ -147,3 +164,14 @@ func (w *redisWrapper) Publish(ctx context.Context, evt event.Event) error {
 }
 
 func (w *redisWrapper) Close() error { return nil }
+
+func parseDurationDefault(s string, fallback time.Duration) time.Duration {
+	if s == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return fallback
+	}
+	return d
+}

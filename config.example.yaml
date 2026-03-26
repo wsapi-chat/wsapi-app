@@ -49,3 +49,8 @@ eventsPublishVia: "webhook" # "webhook", "redis", or "none" (env: WSAPI_PUBLISH_
 #   masterName: "mymaster"         # Sentinel master name (env: WSAPI_REDIS_MASTER_NAME)
 #   sentinelPassword: ""           # Sentinel auth password (env: WSAPI_REDIS_SENTINEL_PASSWORD)
 #   maxRetries: 50                 # Max retries per Redis command (env: WSAPI_REDIS_MAX_RETRIES)
+#   poolSize: 3                    # Max socket connections (env: WSAPI_REDIS_POOL_SIZE)
+#   minIdleConns: 0                # Min idle connections kept open (env: WSAPI_REDIS_MIN_IDLE_CONNS)
+#   maxIdleConns: 1                # Max idle connections kept open (env: WSAPI_REDIS_MAX_IDLE_CONNS)
+#   connMaxIdleTime: "3m"          # Max idle time before connection is closed (env: WSAPI_REDIS_CONN_MAX_IDLE_TIME)
+#   connMaxLifetime: "30m"         # Max lifetime before connection is recycled (env: WSAPI_REDIS_CONN_MAX_LIFETIME)
