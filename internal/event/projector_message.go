@@ -86,7 +86,25 @@ func ProjectMessage(msg *waEvents.Message, pctx *ProjectorContext) (string, any,
 		}
 	}
 
+	// Discard messages with no actual content (e.g. WhatsApp sometimes sends
+	// media message events with empty content followed by the real event).
+	if !hasContent(&result) {
+		return TypeMessage, nil, false
+	}
+
 	return TypeMessage, result, true
+}
+
+// hasContent reports whether a projected message carries any meaningful payload.
+func hasContent(m *MessageEvent) bool {
+	return m.Text != "" ||
+		m.Media != nil ||
+		m.Reaction != nil ||
+		m.Contact != "" ||
+		len(m.ContactArray) > 0 ||
+		m.ExtendedText != nil ||
+		m.Pin != nil ||
+		m.Edit != nil
 }
 
 // ProjectReceipt converts a whatsmeow Receipt event into a ReceiptEvent.
