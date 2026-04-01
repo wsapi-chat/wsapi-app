@@ -21,12 +21,20 @@ func parseChat(chat string) (waTypes.JID, error) {
 	return FormatRecipient(chat), nil
 }
 
-// parseSender parses a sender JID string.
+// parseSender parses a sender JID string. Accepts both full JID format
+// (e.g. "1234567890@s.whatsapp.net") and phone-only (e.g. "1234567890").
 func parseSender(sender string) (waTypes.JID, error) {
 	if sender == "" {
 		return waTypes.EmptyJID, fmt.Errorf("sender is empty")
 	}
-	return parseJID(sender)
+	// If it contains '@', validate strictly as a full JID.
+	for _, c := range sender {
+		if c == '@' {
+			return parseJID(sender)
+		}
+	}
+	// Phone-only input: append the default server.
+	return waTypes.NewJID(sender, waTypes.DefaultUserServer), nil
 }
 
 // isGroup returns true if the JID is a group JID.
