@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/wsapi-chat/wsapi-app/internal/config"
+	"github.com/wsapi-chat/wsapi-app/internal/event"
 	"github.com/wsapi-chat/wsapi-app/internal/publisher"
 	"github.com/wsapi-chat/wsapi-app/internal/server/middleware"
 	"github.com/wsapi-chat/wsapi-app/internal/whatsapp"
@@ -16,6 +17,7 @@ type Instance struct {
 	Config    config.InstanceConfig
 	Service   *whatsapp.Service
 	Publisher publisher.Publisher
+	Dedup     *event.Dedup
 	Logger    *slog.Logger
 }
 
