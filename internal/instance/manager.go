@@ -3,12 +3,14 @@ package instance
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/appstate"
 	"go.mau.fi/whatsmeow/proto/waHistorySync"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waTypes "go.mau.fi/whatsmeow/types"
@@ -223,6 +225,9 @@ func (m *Manager) DeleteInstance(ctx context.Context, id string) error {
 	if inst.Publisher != nil {
 		_ = inst.Publisher.Close()
 	}
+	if inst.Dedup != nil {
+		inst.Dedup.Close()
+	}
 
 	delete(m.instances, id)
 
@@ -358,6 +363,9 @@ func (m *Manager) RestartInstance(ctx context.Context, id string) error {
 	if inst.Publisher != nil {
 		_ = inst.Publisher.Close()
 	}
+	if inst.Dedup != nil {
+		inst.Dedup.Close()
+	}
 
 	// Rebuild with same config — use existing device JID if available.
 	deviceID := ""
@@ -406,6 +414,9 @@ func (m *Manager) Shutdown() {
 		if inst.Publisher != nil {
 			_ = inst.Publisher.Close()
 		}
+		if inst.Dedup != nil {
+			inst.Dedup.Close()
+		}
 		m.logger.Info("instance shut down", "id", id)
 	}
 
@@ -424,6 +435,7 @@ func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg co
 		ID:        id,
 		Config:    cfg,
 		Publisher: pub,
+		Dedup:     event.NewDedup(2 * time.Hour),
 		Logger:    instLogger,
 	}
 
@@ -443,6 +455,8 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 	pub := inst.Publisher
 	cfg := inst.Config
 
+	dedup := inst.Dedup
+
 	waInstLogger := m.waLogger.With("instanceId", id)
 	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore)
 	if err != nil {
@@ -457,6 +471,7 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 	contactStore := m.contactStore
 	historySyncStore := m.historySyncStore
 	waClient := svc.Client()
+	var appStateRecovering sync.Map // keyed by appstate.WAPatchName; prevents concurrent recovery per collection
 	initialSyncPublished := &sync.Once{}
 	historySyncEnabled := cfg.HistorySync != nil && *cfg.HistorySync
 	svc.AddEventHandler(func(evt interface{}) {
@@ -593,6 +608,9 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 			}
 		case *waEvents.AppStateSyncError:
 			instLogger.Warn("app state sync failed", "name", string(e.Name), "error", e.Error)
+			if errors.Is(e.Error, appstate.ErrMismatchingLTHash) && !e.FullSync {
+				go recoverAppState(waClient, e.Name, instLogger, &appStateRecovering)
+			}
 		}
 
 		// Project and publish.
@@ -612,6 +630,15 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 				}
 			}
 			if !matched {
+				return
+			}
+		}
+
+		// Deduplicate message events by whatsmeow message ID to prevent
+		// duplicate deliveries (e.g. unavailable message retry flow).
+		if msg, ok := projected.Data.(event.MessageEvent); ok {
+			if dedup.Contains(msg.ID) {
+				instLogger.Debug("duplicate message event discarded", "messageId", msg.ID)
 				return
 			}
 		}
@@ -720,6 +747,34 @@ func cacheHistorySyncMessages(client *whatsmeow.Client, e *waEvents.HistorySync,
 			logger.Error("history sync cache: insert", "chatJid", chatJID.String(), "error", err)
 		}
 	}
+}
+
+// recoverAppState requests an unencrypted app state snapshot from the primary
+// device via peer data recovery. This bypasses LTHash verification entirely,
+// making it the most reliable recovery for hash-mismatch errors. The response
+// is handled automatically by whatsmeow (handleAppStateRecovery) and emits
+// AppStateSyncComplete{Recovery: true} on success.
+//
+// The recovering sync.Map ensures only one recovery is in-flight per collection
+// — rapid-fire sync failures won't spawn duplicate goroutines.
+func recoverAppState(client *whatsmeow.Client, name appstate.WAPatchName, logger *slog.Logger, recovering *sync.Map) {
+	if _, loaded := recovering.LoadOrStore(name, true); loaded {
+		logger.Debug("app state recovery already in progress, skipping", "name", string(name))
+		return
+	}
+	defer recovering.Delete(name)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	logger.Info("requesting app state peer recovery", "name", string(name))
+	msg := whatsmeow.BuildAppStateRecoveryRequest(name)
+	_, err := client.SendPeerMessage(ctx, msg)
+	if err != nil {
+		logger.Error("failed to send app state recovery request", "name", string(name), "error", err)
+		return
+	}
+	logger.Info("app state recovery request sent to primary device", "name", string(name))
 }
 
 // resolveLID converts a LID-based JID to a phone-based JID using the device's
