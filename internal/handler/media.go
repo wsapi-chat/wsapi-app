@@ -46,8 +46,8 @@ func (h *MediaHandler) Download(w http.ResponseWriter, r *http.Request) {
 
 // contentDisposition builds a Content-Disposition header value.
 // For ASCII-only filenames it uses a simple filename="…" parameter.
-// For non-ASCII filenames it adds the RFC 5987
-// filename*=UTF-8”… parameter so browsers and proxies handle them correctly.
+// For non-ASCII filenames (e.g. Cyrillic) it adds the RFC 5987
+// filename*=UTF-8'lang'value parameter so browsers and proxies handle them correctly.
 func contentDisposition(filename string) string {
 	if isASCII(filename) {
 		return fmt.Sprintf("attachment; filename=%q", filename)
