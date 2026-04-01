@@ -345,10 +345,10 @@ func (m *MessageService) SendReaction(ctx context.Context, to, senderID, message
 	}
 
 	senderJID := waTypes.EmptyJID
-	if isGroup(chatJID) {
+	if senderID != "" {
 		senderJID, err = parseSender(senderID)
 		if err != nil {
-			return "", fmt.Errorf("sender is required for group messages that are from others: %v", err)
+			return "", fmt.Errorf("invalid sender JID: %v", err)
 		}
 	}
 
@@ -565,14 +565,14 @@ func (m *MessageService) StarMessage(ctx context.Context, chatID, senderID, mess
 		return err
 	}
 
-	isme := m.client.Store.ID.ToNonAD().String() == senderID
+	senderJID, err := parseSender(senderID)
+	if err != nil {
+		return fmt.Errorf("invalid sender JID: %v", err)
+	}
+	isme := senderJID.User == m.client.Store.ID.User
 
 	var patch appstate.PatchInfo
 	if isGroup(chatJID) {
-		senderJID, err := parseSender(senderID)
-		if err != nil {
-			return fmt.Errorf("sender is required for group messages that are from others: %v", err)
-		}
 		patch = buildStar(chatID, senderJID.String(), messageID, isme, starred)
 	} else {
 		patch = buildStar(chatID, "0", messageID, isme, starred)
