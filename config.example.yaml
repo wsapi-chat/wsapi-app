@@ -23,10 +23,9 @@ logging:
 
 httpProxy: "" # HTTP proxy URL for outbound requests (env: WSAPI_HTTP_PROXY)
 
-instanceMode:
-  "single" # "single" or "multi" (env: WSAPI_INSTANCE_MODE)
-  # single: auto-provisions a default instance, no X-Instance-Id header needed, no admin API (default)
-  # multi: instances managed via /admin/instances, X-Instance-Id required
+instanceMode: "single" # "single" or "multi" (env: WSAPI_INSTANCE_MODE)
+                        # single: auto-provisions a default instance, no X-Instance-Id header needed, no admin API (default)
+                        # multi: instances managed via /admin/instances, X-Instance-Id required
 
 instanceDefaults:
   apiKey: "" # Default API key for instances (env: WSAPI_DEFAULT_API_KEY)
