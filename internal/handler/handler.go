@@ -64,6 +64,8 @@ func (h *Handler) ServiceError(w http.ResponseWriter, err error) {
 		h.Error(w, err.Error(), http.StatusNotFound)
 	case errors.Is(err, whatsapp.ErrUpstream):
 		h.Error(w, err.Error(), http.StatusBadGateway)
+	case errors.Is(err, whatsapp.ErrTooLarge):
+		h.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
 	default:
 		h.Error(w, err.Error(), http.StatusBadRequest)
 	}

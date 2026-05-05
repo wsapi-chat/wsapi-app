@@ -2,10 +2,12 @@ package handler
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
@@ -32,16 +34,20 @@ func (h *MediaHandler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	inst := h.Instance(r)
-	data, filename, mimeType, err := inst.Service.Media.DownloadByID(r.Context(), mediaID)
+	result, err := inst.Service.Media.DownloadByID(r.Context(), mediaID)
 	if err != nil {
 		h.ServiceError(w, err)
 		return
 	}
+	defer func() { _ = result.Body.Close() }()
 
-	w.Header().Set("Content-Type", mimeType)
-	w.Header().Set("Content-Disposition", contentDisposition(filename))
+	w.Header().Set("Content-Type", result.MimeType)
+	w.Header().Set("Content-Disposition", contentDisposition(result.Filename))
+	w.Header().Set("Content-Length", strconv.FormatInt(result.Size, 10))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	if _, err := io.Copy(w, result.Body); err != nil {
+		h.Logger.Warn("media stream interrupted", "error", err)
+	}
 }
 
 // contentDisposition builds a Content-Disposition header value.
