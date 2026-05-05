@@ -43,10 +43,7 @@ type MessageService struct {
 
 // SendText sends a text message to the specified recipient.
 func (m *MessageService) SendText(ctx context.Context, to, text string, opts SendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	contextInfo := m.buildContextInfo(chatJID, opts.Mentions, opts.ReplyTo, opts.ReplyToSenderID, opts.IsForwarded, opts.EphemeralExpiration)
 
@@ -73,10 +70,7 @@ func (m *MessageService) SendText(ctx context.Context, to, text string, opts Sen
 
 // SendLink sends a link preview message to the specified recipient.
 func (m *MessageService) SendLink(ctx context.Context, to, text, url, title, description string, jpegThumbnail []byte, opts SendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	contextInfo := m.buildContextInfo(chatJID, opts.Mentions, opts.ReplyTo, opts.ReplyToSenderID, opts.IsForwarded, opts.EphemeralExpiration)
 
@@ -100,10 +94,7 @@ func (m *MessageService) SendLink(ctx context.Context, to, text, url, title, des
 
 // SendImage sends an image message to the specified recipient.
 func (m *MessageService) SendImage(ctx context.Context, to string, data []byte, mimeType string, opts MediaSendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	uploaded, err := m.uploadMedia(ctx, data, whatsmeow.MediaImage)
 	if err != nil {
@@ -136,10 +127,7 @@ func (m *MessageService) SendImage(ctx context.Context, to string, data []byte, 
 
 // SendVideo sends a video message to the specified recipient.
 func (m *MessageService) SendVideo(ctx context.Context, to string, data []byte, mimeType string, opts MediaSendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	uploaded, err := m.uploadMedia(ctx, data, whatsmeow.MediaVideo)
 	if err != nil {
@@ -172,10 +160,7 @@ func (m *MessageService) SendVideo(ctx context.Context, to string, data []byte, 
 
 // SendAudio sends an audio message to the specified recipient.
 func (m *MessageService) SendAudio(ctx context.Context, to string, data []byte, mimeType string, opts MediaSendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	uploaded, err := m.uploadMedia(ctx, data, whatsmeow.MediaAudio)
 	if err != nil {
@@ -207,10 +192,7 @@ func (m *MessageService) SendAudio(ctx context.Context, to string, data []byte, 
 
 // SendVoice sends a voice (PTT) message to the specified recipient.
 func (m *MessageService) SendVoice(ctx context.Context, to string, data []byte, opts MediaSendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	uploaded, err := m.uploadMedia(ctx, data, whatsmeow.MediaAudio)
 	if err != nil {
@@ -243,10 +225,7 @@ func (m *MessageService) SendVoice(ctx context.Context, to string, data []byte, 
 
 // SendDocument sends a document message to the specified recipient.
 func (m *MessageService) SendDocument(ctx context.Context, to string, data []byte, filename string, opts MediaSendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	uploaded, err := m.uploadMedia(ctx, data, whatsmeow.MediaDocument)
 	if err != nil {
@@ -280,10 +259,7 @@ func (m *MessageService) SendDocument(ctx context.Context, to string, data []byt
 
 // SendSticker sends a sticker message to the specified recipient.
 func (m *MessageService) SendSticker(ctx context.Context, to string, data []byte, isAnimated bool, opts SendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	uploaded, err := m.uploadMedia(ctx, data, whatsmeow.MediaImage)
 	if err != nil {
@@ -315,10 +291,7 @@ func (m *MessageService) SendSticker(ctx context.Context, to string, data []byte
 
 // SendContact sends a contact card message to the specified recipient.
 func (m *MessageService) SendContact(ctx context.Context, to, displayName, vcard string, opts SendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	contextInfo := m.buildContextInfo(chatJID, opts.Mentions, opts.ReplyTo, opts.ReplyToSenderID, opts.IsForwarded, opts.EphemeralExpiration)
 
@@ -339,17 +312,11 @@ func (m *MessageService) SendContact(ctx context.Context, to, displayName, vcard
 
 // SendReaction sends a reaction to a message.
 func (m *MessageService) SendReaction(ctx context.Context, to, senderID, messageID, reaction string) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	senderJID := waTypes.EmptyJID
 	if senderID != "" {
-		senderJID, err = parseSender(senderID)
-		if err != nil {
-			return "", fmt.Errorf("invalid sender JID: %v", err)
-		}
+		senderJID = FormatRecipient(senderID)
 	}
 
 	reactionMsg := m.client.BuildReaction(chatJID, senderJID, messageID, reaction)
@@ -363,10 +330,7 @@ func (m *MessageService) SendReaction(ctx context.Context, to, senderID, message
 
 // SendLocation sends a location message to the specified recipient.
 func (m *MessageService) SendLocation(ctx context.Context, to string, lat, lng float64, name, address, url, ephemeralExp string) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	if lat < -90 || lat > 90 || lng < -180 || lng > 180 {
 		return "", fmt.Errorf("invalid latitude or longitude")
@@ -394,10 +358,7 @@ func (m *MessageService) SendLocation(ctx context.Context, to string, lat, lng f
 
 // EditMessage edits a previously sent message.
 func (m *MessageService) EditMessage(ctx context.Context, to, messageID, text string, opts SendOptions) (string, error) {
-	chatJID, err := parseChat(to)
-	if err != nil {
-		return "", err
-	}
+	chatJID := FormatRecipient(to)
 
 	contextInfo := m.buildContextInfo(chatJID, opts.Mentions, opts.ReplyTo, opts.ReplyToSenderID, opts.IsForwarded, opts.EphemeralExpiration)
 
@@ -437,14 +398,11 @@ func (m *MessageService) EditMessage(ctx context.Context, to, messageID, text st
 
 // DeleteMessage revokes (deletes) a message for all participants.
 func (m *MessageService) DeleteMessage(ctx context.Context, chatID, senderID, messageID string) error {
-	chatJID, err := parseChat(chatID)
+	chatJID, err := parseJID(chatID)
 	if err != nil {
 		return err
 	}
-	senderJID, err := parseSender(senderID)
-	if err != nil {
-		return err
-	}
+	senderJID := FormatRecipient(senderID)
 
 	msg := m.client.BuildRevoke(chatJID, senderJID, messageID)
 
@@ -454,7 +412,7 @@ func (m *MessageService) DeleteMessage(ctx context.Context, chatID, senderID, me
 
 // DeleteMessageForMe deletes a message only for the current user.
 func (m *MessageService) DeleteMessageForMe(ctx context.Context, chatID, senderID string, isFromMe bool, messageID string, timestamp time.Time) error {
-	chatJID, err := parseChat(chatID)
+	chatJID, err := parseJID(chatID)
 	if err != nil {
 		return err
 	}
@@ -462,10 +420,10 @@ func (m *MessageService) DeleteMessageForMe(ctx context.Context, chatID, senderI
 	var patch appstate.PatchInfo
 
 	if isGroup(chatJID) && !isFromMe {
-		senderJID, err := parseSender(senderID)
-		if err != nil {
-			return fmt.Errorf("sender is required for group messages that are from others: %v", err)
+		if senderID == "" {
+			return fmt.Errorf("sender is required for group messages that are from others")
 		}
+		senderJID := FormatRecipient(senderID)
 		patch = buildDeleteForMe(chatID, senderJID.String(), messageID, isFromMe, timestamp)
 	} else {
 		patch = buildDeleteForMe(chatID, "0", messageID, isFromMe, timestamp)
@@ -486,15 +444,12 @@ func (m *MessageService) DeleteMessageForMe(ctx context.Context, chatID, senderI
 
 // MarkAsRead marks a message as read.
 func (m *MessageService) MarkAsRead(ctx context.Context, chatID, senderID, messageID, receiptType string) error {
-	chatJID, err := parseChat(chatID)
+	chatJID, err := parseJID(chatID)
 	if err != nil {
 		return err
 	}
 
-	senderJID, err := parseSender(senderID)
-	if err != nil {
-		return err
-	}
+	senderJID := FormatRecipient(senderID)
 
 	msgIDs := []waTypes.MessageID{waTypes.MessageID(messageID)}
 
@@ -515,15 +470,12 @@ func (m *MessageService) MarkAsRead(ctx context.Context, chatID, senderID, messa
 
 // PinMessage pins or unpins a message in a chat.
 func (m *MessageService) PinMessage(ctx context.Context, chatID, senderID, messageID string, pinned bool, expiration string) error {
-	chatJID, err := parseChat(chatID)
+	chatJID, err := parseJID(chatID)
 	if err != nil {
 		return err
 	}
 
-	senderJID, err := parseSender(senderID)
-	if err != nil {
-		return err
-	}
+	senderJID := FormatRecipient(senderID)
 
 	var pinExpirationInt uint32
 	var pinTypeEnum waE2E.PinInChatMessage_Type
@@ -560,15 +512,12 @@ func (m *MessageService) PinMessage(ctx context.Context, chatID, senderID, messa
 
 // StarMessage stars or unstars a message.
 func (m *MessageService) StarMessage(ctx context.Context, chatID, senderID, messageID string, starred bool) error {
-	chatJID, err := parseChat(chatID)
+	chatJID, err := parseJID(chatID)
 	if err != nil {
 		return err
 	}
 
-	senderJID, err := parseSender(senderID)
-	if err != nil {
-		return fmt.Errorf("invalid sender JID: %v", err)
-	}
+	senderJID := FormatRecipient(senderID)
 	isme := senderJID.User == m.client.Store.ID.User
 
 	var patch appstate.PatchInfo
@@ -609,14 +558,16 @@ func (m *MessageService) buildContextInfo(chatJID waTypes.JID, mentions []string
 	}
 
 	if len(mentions) > 0 {
-		contextInfo.MentionedJID = make([]string, len(mentions))
-		for i, mention := range mentions {
-			mentionJID, err := parseSender(mention)
-			if err == nil {
-				contextInfo.MentionedJID[i] = mentionJID.String()
+		contextInfo.MentionedJID = make([]string, 0, len(mentions))
+		for _, mention := range mentions {
+			if mention == "" {
+				continue
 			}
+			contextInfo.MentionedJID = append(contextInfo.MentionedJID, FormatRecipient(mention).String())
 		}
-		isContextSet = true
+		if len(contextInfo.MentionedJID) > 0 {
+			isContextSet = true
+		}
 	}
 
 	if isForwarded {

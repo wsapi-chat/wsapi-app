@@ -61,11 +61,10 @@ func (g *GroupService) CreateGroup(ctx context.Context, name string, participant
 
 	waJIDs := make([]waTypes.JID, 0, len(participants))
 	for _, p := range participants {
-		jid, err := waTypes.ParseJID(p)
-		if err != nil {
-			return "", fmt.Errorf("invalid participant ID '%s': %w", p, err)
+		if p == "" {
+			return "", fmt.Errorf("participant ID cannot be empty")
 		}
-		waJIDs = append(waJIDs, jid)
+		waJIDs = append(waJIDs, FormatRecipient(p))
 	}
 
 	req := whatsmeow.ReqCreateGroup{
@@ -82,18 +81,17 @@ func (g *GroupService) CreateGroup(ctx context.Context, name string, participant
 
 // UpdateGroupParticipants adds, removes, promotes, or demotes participants.
 func (g *GroupService) UpdateGroupParticipants(ctx context.Context, groupID string, participants []string, action string) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
 
 	waParticipants := make([]waTypes.JID, 0, len(participants))
 	for _, p := range participants {
-		pJID, err := waTypes.ParseJID(p)
-		if err != nil {
-			return fmt.Errorf("invalid participant JID: %w", err)
+		if p == "" {
+			return fmt.Errorf("participant ID cannot be empty")
 		}
-		waParticipants = append(waParticipants, pJID)
+		waParticipants = append(waParticipants, FormatRecipient(p))
 	}
 
 	var waAction whatsmeow.ParticipantChange
@@ -116,7 +114,7 @@ func (g *GroupService) UpdateGroupParticipants(ctx context.Context, groupID stri
 
 // GetGroupInfo returns information about a group.
 func (g *GroupService) GetGroupInfo(ctx context.Context, groupID string) (GroupInfoResponse, error) {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return GroupInfoResponse{}, fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -129,7 +127,7 @@ func (g *GroupService) GetGroupInfo(ctx context.Context, groupID string) (GroupI
 
 // GetGroupParticipants returns just the participants for a group.
 func (g *GroupService) GetGroupParticipants(ctx context.Context, groupID string) ([]GroupParticipant, error) {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -152,11 +150,11 @@ func (g *GroupService) GetGroupInfoFromLink(ctx context.Context, code string) (G
 
 // GetGroupInfoFromInvite gets the group info from an invite message.
 func (g *GroupService) GetGroupInfoFromInvite(ctx context.Context, groupID, inviterID, code string, expiration int64) (GroupInfoResponse, error) {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return GroupInfoResponse{}, fmt.Errorf("invalid group JID: %w", err)
 	}
-	inviter, err := waTypes.ParseJID(inviterID)
+	inviter, err := parseJID(inviterID)
 	if err != nil {
 		return GroupInfoResponse{}, fmt.Errorf("invalid inviter JID: %w", err)
 	}
@@ -169,7 +167,7 @@ func (g *GroupService) GetGroupInfoFromInvite(ctx context.Context, groupID, invi
 
 // GetGroupInviteLink returns or resets the group invite link.
 func (g *GroupService) GetGroupInviteLink(ctx context.Context, groupID string, reset bool) (string, error) {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return "", fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -191,11 +189,11 @@ func (g *GroupService) GetJoinedGroups(ctx context.Context) ([]GroupInfoResponse
 
 // JoinGroupWithInvite joins a group using an invite message.
 func (g *GroupService) JoinGroupWithInvite(ctx context.Context, groupID, inviterID, code string, expiration int64) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
-	inviter, err := waTypes.ParseJID(inviterID)
+	inviter, err := parseJID(inviterID)
 	if err != nil {
 		return fmt.Errorf("invalid inviter JID: %w", err)
 	}
@@ -213,7 +211,7 @@ func (g *GroupService) JoinGroupWithLink(ctx context.Context, code string) (stri
 
 // LeaveGroup leaves the specified group.
 func (g *GroupService) LeaveGroup(ctx context.Context, groupID string) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -222,7 +220,7 @@ func (g *GroupService) LeaveGroup(ctx context.Context, groupID string) error {
 
 // SetGroupAnnounceMode sets the announce mode for a group.
 func (g *GroupService) SetGroupAnnounceMode(ctx context.Context, groupID string, announceMode bool) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -231,7 +229,7 @@ func (g *GroupService) SetGroupAnnounceMode(ctx context.Context, groupID string,
 
 // SetGroupDescription sets the description for a group.
 func (g *GroupService) SetGroupDescription(ctx context.Context, groupID string, description string) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -240,7 +238,7 @@ func (g *GroupService) SetGroupDescription(ctx context.Context, groupID string, 
 
 // SetGroupJoinApprovalMode sets the join approval mode for a group.
 func (g *GroupService) SetGroupJoinApprovalMode(ctx context.Context, groupID string, joinApprovalMode bool) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -249,7 +247,7 @@ func (g *GroupService) SetGroupJoinApprovalMode(ctx context.Context, groupID str
 
 // SetGroupLocked sets the locked mode for a group.
 func (g *GroupService) SetGroupLocked(ctx context.Context, groupID string, locked bool) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -258,7 +256,7 @@ func (g *GroupService) SetGroupLocked(ctx context.Context, groupID string, locke
 
 // SetGroupMemberAddMode sets the member add mode for a group.
 func (g *GroupService) SetGroupMemberAddMode(ctx context.Context, groupID string, onlyAdminAdd bool) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -273,7 +271,7 @@ func (g *GroupService) SetGroupMemberAddMode(ctx context.Context, groupID string
 
 // SetGroupName sets the name for a group.
 func (g *GroupService) SetGroupName(ctx context.Context, groupID string, name string) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -282,7 +280,7 @@ func (g *GroupService) SetGroupName(ctx context.Context, groupID string, name st
 
 // SetGroupPicture sets the photo for a group.
 func (g *GroupService) SetGroupPicture(ctx context.Context, groupID string, photo []byte) (string, error) {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return "", fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -295,7 +293,7 @@ func (g *GroupService) SetGroupPicture(ctx context.Context, groupID string, phot
 
 // GetGroupRequestParticipants returns the list of pending join requests.
 func (g *GroupService) GetGroupRequestParticipants(ctx context.Context, groupID string) ([]GroupParticipantRequest, error) {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -316,17 +314,16 @@ func (g *GroupService) GetGroupRequestParticipants(ctx context.Context, groupID 
 
 // UpdateGroupRequestParticipants approves or rejects pending join requests.
 func (g *GroupService) UpdateGroupRequestParticipants(ctx context.Context, groupID string, participants []string, action string) error {
-	jid, err := waTypes.ParseJID(groupID)
+	jid, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
 	waParticipants := make([]waTypes.JID, 0, len(participants))
 	for _, p := range participants {
-		pJID, err := waTypes.ParseJID(p)
-		if err != nil {
-			return fmt.Errorf("invalid participant JID: %w", err)
+		if p == "" {
+			return fmt.Errorf("participant ID cannot be empty")
 		}
-		waParticipants = append(waParticipants, pJID)
+		waParticipants = append(waParticipants, FormatRecipient(p))
 	}
 
 	var waAction whatsmeow.ParticipantRequestChange
