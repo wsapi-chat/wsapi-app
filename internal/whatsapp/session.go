@@ -53,21 +53,14 @@ func (s *SessionService) Disconnect() {
 	s.client.Disconnect()
 }
 
-// Logout disconnects from WhatsApp and removes the device session.
+// Logout disconnects from WhatsApp and removes the device session. The
+// caller is responsible for discarding this *whatsmeow.Client afterwards
+// (Manager.HandleLogout rebuilds the service) — calling Connect() on this
+// client again would fail with "invalid use of deleted device".
 func (s *SessionService) Logout(ctx context.Context) error {
-	err := s.client.Logout(ctx)
-	if err != nil {
+	if err := s.client.Logout(ctx); err != nil {
 		return fmt.Errorf("failed to logout: %v", err)
 	}
-
-	// Mark the store as uninitialized so that re-pairing triggers
-	// initializeDevice (which creates sub-stores scoped to the new JID).
-	// We must NOT replace cli.Store with a new *store.Device because the
-	// appstate.Processor inside whatsmeow holds a direct pointer to it;
-	// swapping the Store would leave the processor referencing the old
-	// device, causing app state sync key lookups to use the wrong JID.
-	s.client.Store.Initialized = false
-
 	return nil
 }
 
