@@ -44,7 +44,7 @@ func (h *SessionHandler) RegisterRoutes(r chi.Router) {
 func (h *SessionHandler) QR(w http.ResponseWriter, r *http.Request) {
 	inst := h.Instance(r)
 
-	png, err := inst.Service.Session.GenerateQRImage()
+	png, err := inst.Service.Session.GenerateQRImage(r.Context())
 	if err != nil {
 		h.ServiceError(w, err)
 		return
@@ -59,7 +59,7 @@ func (h *SessionHandler) QR(w http.ResponseWriter, r *http.Request) {
 func (h *SessionHandler) QRText(w http.ResponseWriter, r *http.Request) {
 	inst := h.Instance(r)
 
-	code, err := inst.Service.Session.GenerateQRCode()
+	code, err := inst.Service.Session.GenerateQRCode(r.Context())
 	if err != nil {
 		h.ServiceError(w, err)
 		return

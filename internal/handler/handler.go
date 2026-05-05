@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,10 @@ import (
 	"github.com/wsapi-chat/wsapi-app/internal/validate"
 	"github.com/wsapi-chat/wsapi-app/internal/whatsapp"
 )
+
+// statusClientClosedRequest is nginx's de-facto convention for "client gave
+// up before we could respond." Not in net/http, but widely understood.
+const statusClientClosedRequest = 499
 
 // Handler provides shared helpers for all HTTP handlers.
 type Handler struct {
@@ -66,6 +71,13 @@ func (h *Handler) ServiceError(w http.ResponseWriter, err error) {
 		h.Error(w, err.Error(), http.StatusBadGateway)
 	case errors.Is(err, whatsapp.ErrTooLarge):
 		h.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+	case errors.Is(err, whatsapp.ErrTimeout), errors.Is(err, context.DeadlineExceeded):
+		h.Error(w, err.Error(), http.StatusGatewayTimeout)
+	case errors.Is(err, context.Canceled):
+		// Client disconnected before we could respond. The body likely
+		// won't land, but we still emit a status so any intermediary
+		// proxy doesn't see a hung connection.
+		h.Error(w, "request canceled", statusClientClosedRequest)
 	default:
 		h.Error(w, err.Error(), http.StatusBadRequest)
 	}
