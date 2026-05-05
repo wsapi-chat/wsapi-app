@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -64,9 +65,18 @@ func (s *SessionService) Logout(ctx context.Context) error {
 	return nil
 }
 
+// qrWaitTimeout caps how long a single QR-generation request will wait for a
+// `code` event from whatsmeow. Kept well below the upstream HTTP-client budget
+// (admin → wsapi-app is 60s) so we always return a clean response or a clean
+// cancellation, not a race against a closing TCP connection.
+const qrWaitTimeout = 30 * time.Second
+
 // GenerateQRImage generates a QR code image for WhatsApp Web login and returns
-// the PNG bytes.
-func (s *SessionService) GenerateQRImage() ([]byte, error) {
+// the PNG bytes. Honors ctx for the wait — if the inbound HTTP request is
+// cancelled the function returns promptly. The underlying QR pairing session
+// is intentionally NOT tied to ctx: it must outlive a single HTTP request so
+// the user can still scan a code returned to a previous poll.
+func (s *SessionService) GenerateQRImage(ctx context.Context) ([]byte, error) {
 	if s.client.Store.ID != nil {
 		return nil, fmt.Errorf("device already registered")
 	}
@@ -74,6 +84,10 @@ func (s *SessionService) GenerateQRImage() ([]byte, error) {
 	// Disconnect any existing connection first.
 	s.client.Disconnect()
 
+	// Use Background, NOT ctx: tying the QR channel to the request context
+	// caused whatsmeow to tear down the WhatsApp websocket the moment the
+	// handler returned, so by the time the user scanned the QR PNG we just
+	// sent back, the underlying ref token was already invalid.
 	qrChan, err := s.client.GetQRChannel(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get QR channel: %v", err)
@@ -99,14 +113,26 @@ func (s *SessionService) GenerateQRImage() ([]byte, error) {
 			return png, nil
 		}
 		return nil, fmt.Errorf("unexpected QR event: %s", evt.Event)
-	case <-time.After(time.Minute):
+	case <-ctx.Done():
+		// Caller bailed — return promptly, but leave the WS alive: a
+		// previous poll may have already shown the user a QR code they
+		// are still about to scan.
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, fmt.Errorf("%w: waiting for QR code", ErrTimeout)
+		}
+		return nil, ctx.Err()
+	case <-time.After(qrWaitTimeout):
+		// We genuinely waited for a code event with nothing to show for
+		// it — release the underlying WS.
 		s.client.Disconnect()
-		return nil, fmt.Errorf("timeout waiting for QR code")
+		return nil, fmt.Errorf("%w: waiting for QR code", ErrTimeout)
 	}
 }
 
-// GenerateQRCode generates a QR code string for WhatsApp Web login.
-func (s *SessionService) GenerateQRCode() (string, error) {
+// GenerateQRCode generates a QR code string for WhatsApp Web login. Lifetime
+// semantics match GenerateQRImage: ctx governs only the wait, not the QR
+// pairing session itself.
+func (s *SessionService) GenerateQRCode(ctx context.Context) (string, error) {
 	if s.client.Store.ID != nil {
 		return "", fmt.Errorf("device already registered")
 	}
@@ -130,9 +156,14 @@ func (s *SessionService) GenerateQRCode() (string, error) {
 			return evt.Code, nil
 		}
 		return "", fmt.Errorf("unexpected QR event: %s", evt.Event)
-	case <-time.After(time.Minute):
+	case <-ctx.Done():
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return "", fmt.Errorf("%w: waiting for QR code", ErrTimeout)
+		}
+		return "", ctx.Err()
+	case <-time.After(qrWaitTimeout):
 		s.client.Disconnect()
-		return "", fmt.Errorf("timeout waiting for QR code")
+		return "", fmt.Errorf("%w: waiting for QR code", ErrTimeout)
 	}
 }
 
