@@ -12,6 +12,7 @@ whatsmeow:
   logLevel: "warn" # debug, info, warn, error (env: WSAPI_WHATSMEOW_LOG_LEVEL)
   pairClientType: "chrome" # chrome, edge, firefox, opera, safari (env: WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE)
   pairClientOs: "Windows" # Windows, Linux, macOS (env: WSAPI_WHATSMEOW_PAIR_CLIENT_OS)
+  maxParallelRetryReceipts: 0 # Per-instance cap on concurrent Signal retry-receipt handlers; 0 = unlimited (env: WSAPI_WHATSMEOW_MAX_PARALLEL_RETRY_RECEIPTS)
 
 auth:
   adminApiKey: "" # API key for /admin/instances management, sent via X-Api-Key header (env: WSAPI_ADMIN_API_KEY)

@@ -61,9 +61,10 @@ type DatabaseConfig struct {
 }
 
 type WhatsmeowConfig struct {
-	LogLevel       string `yaml:"logLevel"`
-	PairClientType string `yaml:"pairClientType"`
-	PairClientOS   string `yaml:"pairClientOs"`
+	LogLevel                 string `yaml:"logLevel"`
+	PairClientType           string `yaml:"pairClientType"`
+	PairClientOS             string `yaml:"pairClientOs"`
+	MaxParallelRetryReceipts int    `yaml:"maxParallelRetryReceipts"`
 }
 
 type AuthConfig struct {
@@ -171,6 +172,11 @@ func applyEnv(cfg *Config) {
 	setIfEnv(&cfg.Whatsmeow.LogLevel, "WSAPI_WHATSMEOW_LOG_LEVEL")
 	setIfEnv(&cfg.Whatsmeow.PairClientType, "WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE")
 	setIfEnv(&cfg.Whatsmeow.PairClientOS, "WSAPI_WHATSMEOW_PAIR_CLIENT_OS")
+	if v := os.Getenv("WSAPI_WHATSMEOW_MAX_PARALLEL_RETRY_RECEIPTS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Whatsmeow.MaxParallelRetryReceipts = n
+		}
+	}
 	setIfEnv(&cfg.Auth.AdminAPIKey, "WSAPI_ADMIN_API_KEY")
 	setIfEnv(&cfg.Logging.Level, "WSAPI_LOG_LEVEL")
 	setIfEnv(&cfg.Logging.Format, "WSAPI_LOG_FORMAT")

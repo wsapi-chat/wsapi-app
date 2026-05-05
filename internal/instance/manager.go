@@ -466,6 +466,9 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 		return fmt.Errorf("create whatsapp service: %w", err)
 	}
 	svc.SetPairClient(m.cfg.Whatsmeow.PairClientType, m.cfg.Whatsmeow.PairClientOS)
+	if n := m.cfg.Whatsmeow.MaxParallelRetryReceipts; n > 0 {
+		svc.SetMaxParallelRetryReceipts(n)
+	}
 	inst.Service = svc
 
 	// Register the event handler that tracks chats and projects/publishes events.
