@@ -3,7 +3,6 @@ package instance
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -454,7 +453,6 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 	instLogger := inst.Logger
 	pub := inst.Publisher
 	cfg := inst.Config
-
 	dedup := inst.Dedup
 
 	waInstLogger := m.waLogger.With("instanceId", id)
@@ -471,7 +469,9 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 	contactStore := m.contactStore
 	historySyncStore := m.historySyncStore
 	waClient := svc.Client()
-	var appStateRecovering sync.Map // keyed by appstate.WAPatchName; prevents concurrent recovery per collection
+	var appStateRecoveryLock sync.Mutex
+	appStateFullSyncAttempted := make(map[appstate.WAPatchName]time.Time) // in-memory, resets on restart
+	appStateRecoveryAttempted := make(map[appstate.WAPatchName]time.Time) // in-memory, 48h cooldown
 	initialSyncPublished := &sync.Once{}
 	historySyncEnabled := cfg.HistorySync != nil && *cfg.HistorySync
 	svc.AddEventHandler(func(evt interface{}) {
@@ -601,15 +601,49 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 			go m.rebuildInstanceService(id)
 			return
 		case *waEvents.AppStateSyncComplete:
-			if e.Recovery {
-				instLogger.Info("app state recovery completed", "name", string(e.Name), "version", e.Version)
-			} else {
-				instLogger.Info("app state sync completed", "name", string(e.Name), "version", e.Version)
-			}
+			// Any successful sync (recovery or regular) clears the
+			// cooldowns that were set during escalation, so the next
+			// failure gets a fresh full-sync → recovery cycle.
+			appStateRecoveryLock.Lock()
+			delete(appStateFullSyncAttempted, e.Name)
+			delete(appStateRecoveryAttempted, e.Name)
+			appStateRecoveryLock.Unlock()
+			instLogger.Info("app state sync completed",
+				"name", string(e.Name), "version", e.Version, "recovery", e.Recovery)
 		case *waEvents.AppStateSyncError:
-			instLogger.Warn("app state sync failed", "name", string(e.Name), "error", e.Error)
-			if errors.Is(e.Error, appstate.ErrMismatchingLTHash) && !e.FullSync {
-				go recoverAppState(waClient, e.Name, instLogger, &appStateRecovering)
+			appStateRecoveryLock.Lock()
+			lastRecovery := appStateRecoveryAttempted[e.Name]
+			lastFullSync := appStateFullSyncAttempted[e.Name]
+
+			if !lastRecovery.IsZero() && time.Since(lastRecovery) < 48*time.Hour {
+				instLogger.Debug("app state sync failed, recovery already attempted",
+					"name", string(e.Name), "error", e.Error,
+					"last_recovery", lastRecovery, "last_full_sync", lastFullSync)
+				appStateRecoveryLock.Unlock()
+			} else if !e.FullSync {
+				if !lastFullSync.IsZero() {
+					instLogger.Debug("app state sync failed, full sync already attempted",
+						"name", string(e.Name), "error", e.Error, "last_full_sync", lastFullSync)
+					appStateRecoveryLock.Unlock()
+				} else {
+					appStateFullSyncAttempted[e.Name] = time.Now()
+					appStateRecoveryLock.Unlock()
+					instLogger.Info("app state partial sync failed, trying full sync",
+						"name", string(e.Name), "error", e.Error)
+					go func() {
+						if err := waClient.FetchAppState(context.Background(), e.Name, true, false); err != nil {
+							instLogger.Error("full app state sync failed", "name", string(e.Name), "error", err)
+						} else {
+							instLogger.Info("full app state sync succeeded", "name", string(e.Name))
+						}
+					}()
+				}
+			} else {
+				appStateRecoveryAttempted[e.Name] = time.Now()
+				appStateRecoveryLock.Unlock()
+				instLogger.Info("app state full sync failed, requesting peer recovery",
+					"name", string(e.Name), "error", e.Error)
+				go recoverAppState(waClient, e.Name, instLogger)
 			}
 		}
 
@@ -749,32 +783,24 @@ func cacheHistorySyncMessages(client *whatsmeow.Client, e *waEvents.HistorySync,
 	}
 }
 
-// recoverAppState requests an unencrypted app state snapshot from the primary
-// device via peer data recovery. This bypasses LTHash verification entirely,
-// making it the most reliable recovery for hash-mismatch errors. The response
-// is handled automatically by whatsmeow (handleAppStateRecovery) and emits
-// AppStateSyncComplete{Recovery: true} on success.
-//
-// The recovering sync.Map ensures only one recovery is in-flight per collection
-// — rapid-fire sync failures won't spawn duplicate goroutines.
-func recoverAppState(client *whatsmeow.Client, name appstate.WAPatchName, logger *slog.Logger, recovering *sync.Map) {
-	if _, loaded := recovering.LoadOrStore(name, true); loaded {
-		logger.Debug("app state recovery already in progress, skipping", "name", string(name))
-		return
-	}
-	defer recovering.Delete(name)
-
+// recoverAppState sends a peer recovery request for the given app state
+// collection. whatsmeow's BuildAppStateRecoveryRequest builds a
+// PeerDataOperationRequestMessage asking the primary device for a fresh
+// unencrypted snapshot of the collection, bypassing the corrupted patch chain.
+// The response is handled automatically by whatsmeow (handleAppStateRecovery)
+// and emits AppStateSyncComplete{Recovery: true} on success.
+func recoverAppState(client *whatsmeow.Client, name appstate.WAPatchName, logger *slog.Logger) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	logger.Info("requesting app state peer recovery", "name", string(name))
 	msg := whatsmeow.BuildAppStateRecoveryRequest(name)
-	_, err := client.SendPeerMessage(ctx, msg)
+	resp, err := client.SendPeerMessage(ctx, msg)
 	if err != nil {
 		logger.Error("failed to send app state recovery request", "name", string(name), "error", err)
 		return
 	}
-	logger.Info("app state recovery request sent to primary device", "name", string(name))
+	logger.Info("app state recovery request sent to primary device",
+		"name", string(name), "message_id", resp.ID, "message_ts", resp.Timestamp)
 }
 
 // resolveLID converts a LID-based JID to a phone-based JID using the device's
