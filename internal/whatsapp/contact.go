@@ -52,7 +52,7 @@ func (c *ContactService) GetAllContacts(ctx context.Context) ([]ContactInfo, err
 	lids := c.client.Store.LIDs
 	contacts := make([]ContactInfo, 0, len(records))
 	for _, rec := range records {
-		jid, parseErr := waTypes.ParseJID(rec.ContactJID)
+		jid, parseErr := parseJID(rec.ContactJID)
 		if parseErr != nil {
 			continue
 		}
@@ -111,7 +111,7 @@ func (c *ContactService) SyncContacts(ctx context.Context) error {
 // It reads from the custom contact store first, falling back to whatsmeow's
 // built-in store if the contact is not found.
 func (c *ContactService) GetContact(ctx context.Context, contactID string) (ContactInfo, error) {
-	jid, err := waTypes.ParseJID(contactID)
+	jid, err := parseJID(contactID)
 	if err != nil {
 		return ContactInfo{}, fmt.Errorf("invalid contact JID: %v", err)
 	}
@@ -154,7 +154,7 @@ func (c *ContactService) GetContact(ctx context.Context, contactID string) (Cont
 
 // BlockContact blocks a contact.
 func (c *ContactService) BlockContact(ctx context.Context, contactID string) error {
-	jid, err := waTypes.ParseJID(contactID)
+	jid, err := parseJID(contactID)
 	if err != nil {
 		return fmt.Errorf("invalid contact JID: %w", err)
 	}
@@ -164,7 +164,7 @@ func (c *ContactService) BlockContact(ctx context.Context, contactID string) err
 
 // UnblockContact unblocks a contact.
 func (c *ContactService) UnblockContact(ctx context.Context, contactID string) error {
-	jid, err := waTypes.ParseJID(contactID)
+	jid, err := parseJID(contactID)
 	if err != nil {
 		return fmt.Errorf("invalid contact JID: %w", err)
 	}

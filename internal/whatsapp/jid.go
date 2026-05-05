@@ -2,39 +2,23 @@ package whatsapp
 
 import (
 	"fmt"
+	"strings"
 
 	waTypes "go.mau.fi/whatsmeow/types"
 )
 
 // parseJID parses a string JID into a whatsmeow JID.
+// The input must be a full JID in user@server format (e.g. "120363...@g.us").
+// Plain phone numbers or strings without '@' are rejected.
 func parseJID(s string) (waTypes.JID, error) {
+	if !strings.Contains(s, "@") {
+		return waTypes.EmptyJID, fmt.Errorf("invalid JID %q: must be in user@server format", s)
+	}
 	jid, err := waTypes.ParseJID(s)
 	if err != nil {
 		return waTypes.EmptyJID, fmt.Errorf("invalid JID %q: %w", s, err)
 	}
 	return jid, nil
-}
-
-// parseChat parses a chat JID string. For user JIDs that don't contain a
-// server suffix, it appends @s.whatsapp.net.
-func parseChat(chat string) (waTypes.JID, error) {
-	return FormatRecipient(chat), nil
-}
-
-// parseSender parses a sender JID string. Accepts both full JID format
-// (e.g. "1234567890@s.whatsapp.net") and phone-only (e.g. "1234567890").
-func parseSender(sender string) (waTypes.JID, error) {
-	if sender == "" {
-		return waTypes.EmptyJID, fmt.Errorf("sender is empty")
-	}
-	// If it contains '@', validate strictly as a full JID.
-	for _, c := range sender {
-		if c == '@' {
-			return parseJID(sender)
-		}
-	}
-	// Phone-only input: append the default server.
-	return waTypes.NewJID(sender, waTypes.DefaultUserServer), nil
 }
 
 // isGroup returns true if the JID is a group JID.
@@ -44,8 +28,11 @@ func isGroup(jid waTypes.JID) bool {
 
 // FormatRecipient takes a phone number or JID string and returns a proper
 // whatsmeow JID. If the input already contains '@', it is parsed as-is;
-// otherwise '@s.whatsapp.net' is appended.
+// otherwise '@s.whatsapp.net' is appended. A leading '+' is stripped,
+// since WhatsApp JIDs use bare E.164 digits (e.g. "250725258789"),
+// not the "+250725258789" display form.
 func FormatRecipient(to string) waTypes.JID {
+	to = strings.TrimPrefix(to, "+")
 	for _, c := range to {
 		if c == '@' {
 			jid, err := waTypes.ParseJID(to)

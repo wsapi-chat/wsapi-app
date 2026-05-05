@@ -46,7 +46,7 @@ func (n *NewsletterService) GetSubscribedNewsletters(ctx context.Context) ([]New
 
 // GetNewsletterInfo returns info about a specific newsletter.
 func (n *NewsletterService) GetNewsletterInfo(ctx context.Context, newsletterID string) (NewsletterInfoResponse, error) {
-	jid, err := waTypes.ParseJID(newsletterID)
+	jid, err := parseJID(newsletterID)
 	if err != nil {
 		return NewsletterInfoResponse{}, fmt.Errorf("invalid newsletter JID: %w", err)
 	}
@@ -85,7 +85,7 @@ func (n *NewsletterService) CreateNewsletter(ctx context.Context, name, descript
 
 // FollowNewsletter subscribes to a newsletter.
 func (n *NewsletterService) FollowNewsletter(ctx context.Context, newsletterID string) error {
-	jid, err := waTypes.ParseJID(newsletterID)
+	jid, err := parseJID(newsletterID)
 	if err != nil {
 		return fmt.Errorf("invalid newsletter JID: %w", err)
 	}
@@ -94,7 +94,7 @@ func (n *NewsletterService) FollowNewsletter(ctx context.Context, newsletterID s
 
 // UnfollowNewsletter unsubscribes from a newsletter.
 func (n *NewsletterService) UnfollowNewsletter(ctx context.Context, newsletterID string) error {
-	jid, err := waTypes.ParseJID(newsletterID)
+	jid, err := parseJID(newsletterID)
 	if err != nil {
 		return fmt.Errorf("invalid newsletter JID: %w", err)
 	}
@@ -103,7 +103,7 @@ func (n *NewsletterService) UnfollowNewsletter(ctx context.Context, newsletterID
 
 // ToggleMuteNewsletter mutes or unmutes a newsletter.
 func (n *NewsletterService) ToggleMuteNewsletter(ctx context.Context, newsletterID string, mute bool) error {
-	jid, err := waTypes.ParseJID(newsletterID)
+	jid, err := parseJID(newsletterID)
 	if err != nil {
 		return fmt.Errorf("invalid newsletter JID: %w", err)
 	}

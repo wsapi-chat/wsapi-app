@@ -46,11 +46,10 @@ func (c *CommunityService) CreateCommunity(ctx context.Context, name string, par
 
 	waJIDs := make([]waTypes.JID, 0, len(participants))
 	for _, p := range participants {
-		jid, err := waTypes.ParseJID(p)
-		if err != nil {
-			return "", fmt.Errorf("invalid participant ID '%s': %w", p, err)
+		if p == "" {
+			return "", fmt.Errorf("participant ID cannot be empty")
 		}
-		waJIDs = append(waJIDs, jid)
+		waJIDs = append(waJIDs, FormatRecipient(p))
 	}
 
 	req := whatsmeow.ReqCreateGroup{
@@ -88,7 +87,7 @@ func (c *CommunityService) GetJoinedCommunities(ctx context.Context) ([]Communit
 
 // GetCommunityInfo returns info about a specific community.
 func (c *CommunityService) GetCommunityInfo(ctx context.Context, communityID string) (CommunityInfoResponse, error) {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return CommunityInfoResponse{}, fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -107,7 +106,7 @@ func (c *CommunityService) GetCommunityInfo(ctx context.Context, communityID str
 
 // LeaveCommunity leaves the specified community.
 func (c *CommunityService) LeaveCommunity(ctx context.Context, communityID string) error {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -116,7 +115,7 @@ func (c *CommunityService) LeaveCommunity(ctx context.Context, communityID strin
 
 // SetCommunityName sets the name of a community.
 func (c *CommunityService) SetCommunityName(ctx context.Context, communityID string, name string) error {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -125,7 +124,7 @@ func (c *CommunityService) SetCommunityName(ctx context.Context, communityID str
 
 // SetCommunityDescription sets the description of a community.
 func (c *CommunityService) SetCommunityDescription(ctx context.Context, communityID string, description string) error {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -134,7 +133,7 @@ func (c *CommunityService) SetCommunityDescription(ctx context.Context, communit
 
 // SetCommunityPicture sets the picture of a community.
 func (c *CommunityService) SetCommunityPicture(ctx context.Context, communityID string, photo []byte) (string, error) {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return "", fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -147,7 +146,7 @@ func (c *CommunityService) SetCommunityPicture(ctx context.Context, communityID 
 
 // SetCommunityLocked sets the locked mode for a community.
 func (c *CommunityService) SetCommunityLocked(ctx context.Context, communityID string, locked bool) error {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -156,7 +155,7 @@ func (c *CommunityService) SetCommunityLocked(ctx context.Context, communityID s
 
 // GetCommunityParticipants returns all participants across all community groups.
 func (c *CommunityService) GetCommunityParticipants(ctx context.Context, communityID string) ([]identity.Identity, error) {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -176,18 +175,17 @@ func (c *CommunityService) GetCommunityParticipants(ctx context.Context, communi
 
 // UpdateCommunityParticipants updates participants in a community.
 func (c *CommunityService) UpdateCommunityParticipants(ctx context.Context, communityID string, participants []string, action string) error {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
 
 	waParticipants := make([]waTypes.JID, 0, len(participants))
 	for _, p := range participants {
-		pJID, err := waTypes.ParseJID(p)
-		if err != nil {
-			return fmt.Errorf("invalid participant JID '%s': %w", p, err)
+		if p == "" {
+			return fmt.Errorf("participant ID cannot be empty")
 		}
-		waParticipants = append(waParticipants, pJID)
+		waParticipants = append(waParticipants, FormatRecipient(p))
 	}
 
 	var waAction whatsmeow.ParticipantChange
@@ -210,7 +208,7 @@ func (c *CommunityService) UpdateCommunityParticipants(ctx context.Context, comm
 
 // GetCommunityInviteLink returns the invite link for a community.
 func (c *CommunityService) GetCommunityInviteLink(ctx context.Context, communityID string) (string, error) {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return "", fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -219,7 +217,7 @@ func (c *CommunityService) GetCommunityInviteLink(ctx context.Context, community
 
 // ResetCommunityInviteLink resets and returns a new invite link for a community.
 func (c *CommunityService) ResetCommunityInviteLink(ctx context.Context, communityID string) (string, error) {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return "", fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -228,7 +226,7 @@ func (c *CommunityService) ResetCommunityInviteLink(ctx context.Context, communi
 
 // GetCommunitySubGroups returns all groups within a community.
 func (c *CommunityService) GetCommunitySubGroups(ctx context.Context, communityID string) ([]CommunitySubGroupResponse, error) {
-	jid, err := waTypes.ParseJID(communityID)
+	jid, err := parseJID(communityID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid community JID: %w", err)
 	}
@@ -256,18 +254,17 @@ func (c *CommunityService) CreateCommunityGroup(ctx context.Context, communityID
 		return "", fmt.Errorf("group name cannot be empty")
 	}
 
-	communityJID, err := waTypes.ParseJID(communityID)
+	communityJID, err := parseJID(communityID)
 	if err != nil {
 		return "", fmt.Errorf("invalid community JID: %w", err)
 	}
 
 	waJIDs := make([]waTypes.JID, 0, len(participants))
 	for _, p := range participants {
-		jid, err := waTypes.ParseJID(p)
-		if err != nil {
-			return "", fmt.Errorf("invalid participant ID '%s': %w", p, err)
+		if p == "" {
+			return "", fmt.Errorf("participant ID cannot be empty")
 		}
-		waJIDs = append(waJIDs, jid)
+		waJIDs = append(waJIDs, FormatRecipient(p))
 	}
 
 	req := whatsmeow.ReqCreateGroup{
@@ -285,12 +282,12 @@ func (c *CommunityService) CreateCommunityGroup(ctx context.Context, communityID
 
 // LinkGroupToCommunity links an existing group to a community.
 func (c *CommunityService) LinkGroupToCommunity(ctx context.Context, communityID string, groupID string) error {
-	communityJID, err := waTypes.ParseJID(communityID)
+	communityJID, err := parseJID(communityID)
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
 
-	groupJID, err := waTypes.ParseJID(groupID)
+	groupJID, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
@@ -300,12 +297,12 @@ func (c *CommunityService) LinkGroupToCommunity(ctx context.Context, communityID
 
 // UnlinkGroupFromCommunity removes a group from a community.
 func (c *CommunityService) UnlinkGroupFromCommunity(ctx context.Context, communityID string, groupID string) error {
-	communityJID, err := waTypes.ParseJID(communityID)
+	communityJID, err := parseJID(communityID)
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
 
-	groupJID, err := waTypes.ParseJID(groupID)
+	groupJID, err := parseJID(groupID)
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}

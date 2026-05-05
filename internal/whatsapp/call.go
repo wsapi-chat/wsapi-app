@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"go.mau.fi/whatsmeow"
-	waTypes "go.mau.fi/whatsmeow/types"
 )
 
 // CallService wraps the whatsmeow client for call operations.
@@ -24,10 +23,7 @@ func (c *CallService) RejectCall(ctx context.Context, callerID, callID string) e
 		return fmt.Errorf("callID cannot be empty")
 	}
 
-	callerJID, err := waTypes.ParseJID(callerID)
-	if err != nil {
-		return fmt.Errorf("invalid callerID: %v", err)
-	}
+	callerJID := FormatRecipient(callerID)
 
 	if err := c.client.RejectCall(ctx, callerJID, callID); err != nil {
 		return fmt.Errorf("failed to reject call: %v", err)

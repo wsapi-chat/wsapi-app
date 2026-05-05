@@ -114,7 +114,7 @@ func (c *ChatService) getChatSettings(ctx context.Context, jid waTypes.JID) (waT
 
 // GetChatPicture retrieves the profile picture for a chat.
 func (c *ChatService) GetChatPicture(ctx context.Context, chatID string) (ChatPictureResponse, error) {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return ChatPictureResponse{}, fmt.Errorf("invalid JID: %w", err)
 	}
@@ -155,7 +155,7 @@ func (c *ChatService) ListChats(ctx context.Context) ([]ChatListItem, error) {
 			IsGroup: rec.IsGroup,
 		}
 
-		jid, err := waTypes.ParseJID(rec.ChatJID)
+		jid, err := parseJID(rec.ChatJID)
 		if err == nil {
 			if contact, ok := contacts[jid]; ok {
 				item.PushName = contact.PushName
@@ -210,7 +210,7 @@ func (c *ChatService) GetChatInfo(ctx context.Context, chatID string) (ChatListI
 		IsGroup: rec.IsGroup,
 	}
 
-	jid, err := waTypes.ParseJID(rec.ChatJID)
+	jid, err := parseJID(rec.ChatJID)
 	if err == nil {
 		contact, contactErr := c.client.Store.Contacts.GetContact(ctx, jid)
 		if contactErr == nil && contact.Found {
@@ -248,7 +248,7 @@ func (c *ChatService) GetChatInfo(ctx context.Context, chatID string) (ChatListI
 
 // SendChatPresence sends a presence update (typing, paused, recording) to a chat.
 func (c *ChatService) SendChatPresence(ctx context.Context, chatID string, state string) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -273,7 +273,7 @@ func (c *ChatService) SendChatPresence(ctx context.Context, chatID string, state
 
 // SubscribeChatPresence subscribes to presence updates for a chat.
 func (c *ChatService) SubscribeChatPresence(ctx context.Context, chatID string) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid JID: %w", err)
 	}
@@ -282,7 +282,7 @@ func (c *ChatService) SubscribeChatPresence(ctx context.Context, chatID string) 
 
 // SetEphemeralExpiration sets the disappearing messages timer for a chat.
 func (c *ChatService) SetEphemeralExpiration(ctx context.Context, chatID string, expiration string) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -306,7 +306,7 @@ func (c *ChatService) SetEphemeralExpiration(ctx context.Context, chatID string,
 
 // MuteChat mutes or unmutes a chat.
 func (c *ChatService) MuteChat(ctx context.Context, chatID string, duration string) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -336,7 +336,7 @@ func (c *ChatService) MuteChat(ctx context.Context, chatID string, duration stri
 
 // PinChat pins or unpins a chat.
 func (c *ChatService) PinChat(ctx context.Context, chatID string, pinned bool) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -345,7 +345,7 @@ func (c *ChatService) PinChat(ctx context.Context, chatID string, pinned bool) e
 
 // ArchiveChat archives or unarchives a chat.
 func (c *ChatService) ArchiveChat(ctx context.Context, chatID string, archived bool) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -354,7 +354,7 @@ func (c *ChatService) ArchiveChat(ctx context.Context, chatID string, archived b
 
 // MarkChatAsRead marks a chat as read or unread.
 func (c *ChatService) MarkChatAsRead(ctx context.Context, chatID string, read bool) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -365,7 +365,7 @@ func (c *ChatService) MarkChatAsRead(ctx context.Context, chatID string, read bo
 
 // ClearChat clears all messages from a chat but keeps the chat in the list.
 func (c *ChatService) ClearChat(ctx context.Context, chatID string) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -376,7 +376,7 @@ func (c *ChatService) ClearChat(ctx context.Context, chatID string) error {
 
 // DeleteChat deletes a chat entirely.
 func (c *ChatService) DeleteChat(ctx context.Context, chatID string) error {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
@@ -387,7 +387,7 @@ func (c *ChatService) DeleteChat(ctx context.Context, chatID string) error {
 
 // GetBusinessProfile retrieves the business profile for a contact.
 func (c *ChatService) GetBusinessProfile(ctx context.Context, chatID string) (BusinessProfileResponse, error) {
-	jid, err := waTypes.ParseJID(chatID)
+	jid, err := parseJID(chatID)
 	if err != nil {
 		return BusinessProfileResponse{}, fmt.Errorf("invalid JID: %w", err)
 	}
@@ -403,7 +403,7 @@ func (c *ChatService) GetBusinessProfile(ctx context.Context, chatID string) (Bu
 // RequestMessages sends an on-demand history sync request for the given chat.
 // The response arrives asynchronously as a message_history_sync event.
 func (c *ChatService) RequestMessages(ctx context.Context, chatID, lastMessageID, lastMessageSenderID string, count int) error {
-	chatJID, err := waTypes.ParseJID(chatID)
+	chatJID, err := parseJID(chatID)
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %w", err)
 	}
