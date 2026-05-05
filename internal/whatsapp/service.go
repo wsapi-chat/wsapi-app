@@ -37,7 +37,7 @@ type Service struct {
 
 // NewService creates a whatsmeow-backed Service. If deviceID is non-empty the
 // existing device store is loaded; otherwise a new device is created.
-func NewService(ctx context.Context, container *sqlstore.Container, deviceID string, logger, waLogger *slog.Logger, chatStore *ChatStore, contactStore *ContactStore, historySyncStore *HistorySyncStore) (*Service, error) {
+func NewService(ctx context.Context, container *sqlstore.Container, deviceID string, logger, waLogger *slog.Logger, chatStore *ChatStore, contactStore *ContactStore, historySyncStore *HistorySyncStore, maxMediaFileSize int64) (*Service, error) {
 	var deviceStore *store.Device
 
 	if deviceID != "" {
@@ -74,7 +74,7 @@ func NewService(ctx context.Context, container *sqlstore.Container, deviceID str
 	svc.Chats = &ChatService{client: waClient, logger: logger, chatStore: chatStore}
 	svc.Account = &UserMeService{client: waClient, logger: logger}
 	svc.Users = &UserService{client: waClient, logger: logger}
-	svc.Media = &MediaService{client: waClient, logger: logger}
+	svc.Media = &MediaService{dl: waClient, logger: logger, maxFileSize: maxMediaFileSize}
 	svc.Session = &SessionService{client: waClient, logger: logger}
 	svc.Calls = &CallService{client: waClient, logger: logger}
 	svc.Newsletters = &NewsletterService{client: waClient, logger: logger}

@@ -458,7 +458,7 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 	dedup := inst.Dedup
 
 	waInstLogger := m.waLogger.With("instanceId", id)
-	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore)
+	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore, m.cfg.MediaMaxFileSizeBytes())
 	if err != nil {
 		return fmt.Errorf("create whatsapp service: %w", err)
 	}

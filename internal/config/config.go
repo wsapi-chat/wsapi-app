@@ -20,6 +20,7 @@ type Config struct {
 	EventsPublishVia string          `yaml:"eventsPublishVia"` // "webhook", "redis", or "none"
 	InstanceDefaults InstanceConfig  `yaml:"instanceDefaults"`
 	HTTPProxy        string          `yaml:"httpProxy"`
+	MediaMaxFileSize string          `yaml:"mediaMaxFileSize"`
 	Redis            *RedisConfig    `yaml:"redis,omitempty"`
 }
 
@@ -106,6 +107,7 @@ func defaults() *Config {
 	return &Config{
 		InstanceMode:     "single",
 		EventsPublishVia: "webhook",
+		MediaMaxFileSize: "100MB",
 		Server: ServerConfig{
 			Port:            8080,
 			ReadTimeout:     "30s",
@@ -181,6 +183,9 @@ func applyEnv(cfg *Config) {
 
 	// HTTP proxy
 	setIfEnv(&cfg.HTTPProxy, "WSAPI_HTTP_PROXY")
+
+	// Media download size limit
+	setIfEnv(&cfg.MediaMaxFileSize, "WSAPI_MEDIA_MAX_FILE_SIZE")
 
 	// Event publishing
 	setIfEnv(&cfg.EventsPublishVia, "WSAPI_PUBLISH_VIA")
@@ -339,6 +344,35 @@ func validate(cfg *Config) error {
 	}
 
 	return nil
+}
+
+// MediaMaxFileSizeBytes parses the human-readable MediaMaxFileSize string
+// (e.g. "100MB") and returns the value in bytes. Returns 100MB if parsing fails.
+func (c *Config) MediaMaxFileSizeBytes() int64 {
+	s := strings.TrimSpace(c.MediaMaxFileSize)
+	if s == "" {
+		return 100 << 20
+	}
+
+	multiplier := int64(1)
+	upper := strings.ToUpper(s)
+	switch {
+	case strings.HasSuffix(upper, "GB"):
+		multiplier = 1 << 30
+		s = strings.TrimSpace(s[:len(s)-2])
+	case strings.HasSuffix(upper, "MB"):
+		multiplier = 1 << 20
+		s = strings.TrimSpace(s[:len(s)-2])
+	case strings.HasSuffix(upper, "KB"):
+		multiplier = 1 << 10
+		s = strings.TrimSpace(s[:len(s)-2])
+	}
+
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || n < 0 {
+		return 100 << 20
+	}
+	return n * multiplier
 }
 
 func setIfEnv(target *string, key string) {
