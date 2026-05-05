@@ -84,6 +84,13 @@ func NewService(ctx context.Context, container *sqlstore.Container, deviceID str
 	return svc, nil
 }
 
+// SetMaxParallelRetryReceipts caps the number of retry-receipt handlers that
+// run concurrently on this client. n <= 0 means unlimited (the whatsmeow
+// default). Must be called before Connect to avoid data races.
+func (s *Service) SetMaxParallelRetryReceipts(n int) {
+	s.client.SetMaxParallelRetryReceiptHandling(int64(n))
+}
+
 // SetPairClient configures the pair client type and OS used during pairing.
 // This sets both the session-level fields (for phone code pairing) and the
 // global store.DeviceProps (for QR pairing) to keep them consistent.
