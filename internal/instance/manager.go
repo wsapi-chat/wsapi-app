@@ -378,9 +378,12 @@ func (m *Manager) RestartInstance(ctx context.Context, id string) error {
 	return nil
 }
 
-// HandleLogout persists the logout state for an instance and publishes a
-// logged_out event. This must be called when the user logs out via the API,
-// because client.Logout() does not emit a LoggedOut event.
+// HandleLogout persists the logout state for an instance, publishes a
+// logged_out event, and rebuilds the WhatsApp service with a fresh device
+// store. This must be called when the user logs out via the API, because
+// client.Logout() does not emit a LoggedOut event. The rebuild mirrors what
+// the *waEvents.LoggedOut handler does, so a subsequent re-pair starts from
+// a clean *whatsmeow.Client and avoids "invalid use of deleted device".
 func (m *Manager) HandleLogout(ctx context.Context, id string) {
 	if m.store != nil {
 		if err := m.store.UpdateDeviceState(ctx, id, "", false); err != nil {
@@ -399,6 +402,8 @@ func (m *Manager) HandleLogout(ctx context.Context, id string) {
 			m.logger.Error("failed to publish logout event", "id", id, "error", err)
 		}
 	}
+
+	m.rebuildInstanceService(id)
 }
 
 // Shutdown gracefully closes all active instances and their resources.
