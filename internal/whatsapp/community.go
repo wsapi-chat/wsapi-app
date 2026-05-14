@@ -202,7 +202,12 @@ func (c *CommunityService) UpdateCommunityParticipants(ctx context.Context, comm
 		return fmt.Errorf("invalid action: %s", action)
 	}
 
-	_, err = c.client.UpdateGroupParticipants(ctx, jid, waParticipants, waAction)
+	groupJID, err := c.getDefaultSubGroupJID(ctx, jid)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.client.UpdateGroupParticipants(ctx, groupJID, waParticipants, waAction)
 	return err
 }
 
@@ -352,4 +357,20 @@ func toCommunityInfoResponse(ctx context.Context, info *waTypes.GroupInfo, lids 
 		CommunityApprovalMode: info.DefaultMembershipApprovalMode,
 		Participants:          participants,
 	}
+}
+
+// getDefaultSubGroupJID finds the announcement group JID for a community.
+func (c *CommunityService) getDefaultSubGroupJID(ctx context.Context, communityJID waTypes.JID) (waTypes.JID, error) {
+	subGroups, err := c.client.GetSubGroups(ctx, communityJID)
+	if err != nil {
+		return waTypes.EmptyJID, fmt.Errorf("failed to get sub-groups: %w", err)
+	}
+
+	for _, sg := range subGroups {
+		if sg.IsDefaultSubGroup {
+			return sg.JID, nil
+		}
+	}
+
+	return waTypes.EmptyJID, fmt.Errorf("default sub-group not found for community %s", communityJID)
 }
