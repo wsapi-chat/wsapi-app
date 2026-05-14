@@ -1809,8 +1809,16 @@ paths:
 
     put:
       tags: [Communities]
-      summary: Update community participants
-      description: Add, remove, promote, or demote participants. Requires admin privileges.
+      summary: Update community admins
+      description: |
+        Promote or demote community admins. Requires admin privileges.
+
+        Only `promote` and `demote` are supported on the community-level endpoint
+        (they manage the community's announcement-group admins, which are the
+        community-wide admins). To **add** or **remove** members, do it on one
+        of the community's sub-groups: `PUT /groups/{subGroupId}/participants`.
+        Community membership is derived from sub-group membership — once a user
+        is in/out of every sub-group, they are in/out of the community.
       operationId: updateCommunityParticipants
       parameters:
         - $ref: "#/components/parameters/XInstanceId"
@@ -1822,23 +1830,13 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdateParticipantsRequest"
             examples:
-              add:
-                summary: Add participants
-                value:
-                  participants: ["1234567890@s.whatsapp.net"]
-                  action: "add"
-              remove:
-                summary: Remove participants
-                value:
-                  participants: ["1234567890@s.whatsapp.net"]
-                  action: "remove"
               promote:
-                summary: Promote to admin
+                summary: Promote to community admin
                 value:
                   participants: ["1234567890@s.whatsapp.net"]
                   action: "promote"
               demote:
-                summary: Demote from admin
+                summary: Demote from community admin
                 value:
                   participants: ["1234567890@s.whatsapp.net"]
                   action: "demote"

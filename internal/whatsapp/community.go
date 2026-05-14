@@ -190,10 +190,11 @@ func (c *CommunityService) UpdateCommunityParticipants(ctx context.Context, comm
 
 	var waAction whatsmeow.ParticipantChange
 	switch action {
-	case "add":
-		waAction = whatsmeow.ParticipantChangeAdd
-	case "remove":
-		waAction = whatsmeow.ParticipantChangeRemove
+	case "add", "remove":
+		// WhatsApp does not accept add/remove on the community announcement
+		// group. Membership is derived from sub-group membership, so callers
+		// must add/remove via PUT /groups/{subGroupId}/participants instead.
+		return fmt.Errorf("action %q is not supported on communities; add or remove the participant from one of the community's sub-groups (PUT /groups/{subGroupId}/participants) instead", action)
 	case "promote":
 		waAction = whatsmeow.ParticipantChangePromote
 	case "demote":
