@@ -130,7 +130,10 @@ func main() {
 	// Global middleware
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RequestID)
-	r.Use(chimiddleware.RealIP)
+	// NOTE: chi v5.3.0 deprecated RealIP as spoofable (it trusts X-Forwarded-For /
+	// X-Real-IP unconditionally). Behavior is intentionally retained here — swap for
+	// trusted-proxy-aware client-IP extraction as a separate, deliberate change.
+	r.Use(chimiddleware.RealIP) //nolint:staticcheck // deprecated in chi v5.3.0; retained pending trusted-proxy IP handling
 	r.Use(middleware.Logging(logger))
 
 	// Health endpoint (no auth)
