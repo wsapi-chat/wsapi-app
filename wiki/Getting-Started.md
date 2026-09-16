@@ -21,7 +21,7 @@ cp config.example.yaml config.yaml   # edit as needed
 docker compose up --build
 ```
 
-### From Source (requires Go 1.25+)
+### From Source (requires Go 1.26+)
 
 ```bash
 git clone https://github.com/wsapi-chat/wsapi-app.git

@@ -1,6 +1,6 @@
 # WSAPI
 
-[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/wsapi-chat/wsapi-app/actions/workflows/ci.yml/badge.svg)](https://github.com/wsapi-chat/wsapi-app/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/wsapi-chat/wsapi-app)](https://goreportcard.com/report/github.com/wsapi-chat/wsapi-app)
