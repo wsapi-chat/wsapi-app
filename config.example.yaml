@@ -1,7 +1,9 @@
 server:
   port: 8080
   readTimeout: "30s"
-  writeTimeout: "60s"
+  # Must stay above whatsmeow's 75s send-ack timeout. Set it lower and a stalled
+  # send reaches the caller as a dropped connection instead of a 504.
+  writeTimeout: "90s"
   shutdownTimeout: "10s"
 
 database:

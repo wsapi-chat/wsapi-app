@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/wsapi-chat/wsapi-app/internal/config"
+	"github.com/wsapi-chat/wsapi-app/internal/whatsapp"
 )
 
 // Server wraps the HTTP server with graceful shutdown.
@@ -38,11 +40,24 @@ func (s *Server) Router() *chi.Mux {
 
 // Run starts the HTTP server and blocks until a shutdown signal is received.
 func (s *Server) Run(ctx context.Context) error {
+	writeTimeout := s.cfg.Server.WriteTimeoutDuration()
+	if writeTimeout <= whatsapp.SendAckTimeout {
+		// A stalled send holds the handler for the full send-ack timeout. If the
+		// write deadline lands first, Go kills the connection before the error
+		// response can be written and the caller gets a reset with no status,
+		// no body, and nothing in the logs naming the cause.
+		s.logger.Warn("server.writeTimeout is not longer than the WhatsApp send-ack timeout; "+
+			"stalled sends will be reported to callers as a dropped connection instead of an error",
+			"writeTimeout", writeTimeout,
+			"sendAckTimeout", whatsapp.SendAckTimeout,
+			"suggested", whatsapp.SendAckTimeout+15*time.Second)
+	}
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", s.cfg.Server.Port),
 		Handler:      s.router,
 		ReadTimeout:  s.cfg.Server.ReadTimeoutDuration(),
-		WriteTimeout: s.cfg.Server.WriteTimeoutDuration(),
+		WriteTimeout: writeTimeout,
 	}
 
 	// Channel to listen for errors from ListenAndServe

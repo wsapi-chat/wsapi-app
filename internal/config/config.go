@@ -40,10 +40,19 @@ func (s ServerConfig) ReadTimeoutDuration() time.Duration {
 	return d
 }
 
+// WriteTimeoutDuration is the http.Server write deadline.
+//
+// It must outlast whatsmeow's 75s send-ack timeout (whatsapp.SendAckTimeout).
+// A send that stalls occupies the handler for the full 75s; if the write
+// deadline expires first, the handler's eventual error response fails to write
+// and Go tears the connection down instead. The caller then sees a bare
+// connection reset — no status, no body, nothing naming the fault — and the
+// only evidence of what happened is destroyed. The previous 60s default did
+// exactly that. Server.Run warns at startup if a config sets it back below.
 func (s ServerConfig) WriteTimeoutDuration() time.Duration {
 	d, _ := time.ParseDuration(s.WriteTimeout)
 	if d == 0 {
-		return 60 * time.Second
+		return 90 * time.Second
 	}
 	return d
 }
@@ -114,7 +123,7 @@ func defaults() *Config {
 		Server: ServerConfig{
 			Port:            8080,
 			ReadTimeout:     "30s",
-			WriteTimeout:    "60s",
+			WriteTimeout:    "90s", // must exceed whatsmeow's 75s send-ack timeout
 			ShutdownTimeout: "10s",
 		},
 		Database: DatabaseConfig{

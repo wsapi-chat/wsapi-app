@@ -63,24 +63,65 @@ func (h *Handler) NoContent(w http.ResponseWriter) {
 }
 
 // ServiceError maps a service-layer error to the appropriate HTTP status code.
+//
+// Every branch logs. The response body used to be the only record that a
+// request had failed, so if the write deadline expired before the handler
+// replied (see ServerConfig.WriteTimeoutDuration) the failure left no trace.
 func (h *Handler) ServiceError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, whatsapp.ErrNotFound):
-		h.Error(w, err.Error(), http.StatusNotFound)
-	case errors.Is(err, whatsapp.ErrUpstream):
-		h.Error(w, err.Error(), http.StatusBadGateway)
-	case errors.Is(err, whatsapp.ErrTooLarge):
-		h.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
-	case errors.Is(err, whatsapp.ErrTimeout), errors.Is(err, context.DeadlineExceeded):
-		h.Error(w, err.Error(), http.StatusGatewayTimeout)
-	case errors.Is(err, context.Canceled):
+	status := h.serviceStatus(err)
+
+	// Debug only because the detail is uninformative ("context canceled") and
+	// the request-logging middleware already records the 499 and its duration
+	// at Info. A cancellation is not benign: the caller gave up at its own,
+	// shorter timeout on a request we were still working on.
+	level := slog.LevelWarn
+	if status == statusClientClosedRequest {
+		level = slog.LevelDebug
+	}
+	h.log().Log(context.Background(), level, "request failed", "status", status, "error", err)
+
+	if status == statusClientClosedRequest {
 		// Client disconnected before we could respond. The body likely
 		// won't land, but we still emit a status so any intermediary
 		// proxy doesn't see a hung connection.
-		h.Error(w, "request canceled", statusClientClosedRequest)
-	default:
-		h.Error(w, err.Error(), http.StatusBadRequest)
+		h.Error(w, "request canceled", status)
+		return
 	}
+	h.Error(w, err.Error(), status)
+}
+
+// serviceStatus classifies a service-layer error. Split out from ServiceError so
+// the mapping can be tested without an http.ResponseWriter.
+func (h *Handler) serviceStatus(err error) int {
+	switch {
+	case errors.Is(err, whatsapp.ErrNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, whatsapp.ErrUpstream):
+		return http.StatusBadGateway
+	case errors.Is(err, whatsapp.ErrTooLarge):
+		return http.StatusRequestEntityTooLarge
+	case errors.Is(err, whatsapp.ErrTimeout), errors.Is(err, context.DeadlineExceeded):
+		return http.StatusGatewayTimeout
+	case whatsapp.IsUpstreamTimeout(err):
+		// WhatsApp didn't answer in time — either no ack for the message or a
+		// stalled info query. Transient and retryable, so it must not land in
+		// the default 400 branch: a 400 tells the caller their request was
+		// malformed and stops well-behaved clients from retrying.
+		return http.StatusGatewayTimeout
+	case errors.Is(err, context.Canceled):
+		return statusClientClosedRequest
+	default:
+		return http.StatusBadRequest
+	}
+}
+
+// log returns the handler's logger, falling back to the default so a
+// zero-value Handler (as used in some tests) doesn't panic.
+func (h *Handler) log() *slog.Logger {
+	if h.Logger == nil {
+		return slog.Default()
+	}
+	return h.Logger
 }
 
 // Error sends a JSON error response.
