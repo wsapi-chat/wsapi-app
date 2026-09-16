@@ -3,6 +3,7 @@ package instance
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -69,8 +70,18 @@ func NewManager(st *whatsapp.InstanceStore, container *sqlstore.Container, chatS
 func (m *Manager) GetInstance(id string) (middleware.Instance, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	inst, ok := m.instances[id]
+	inst, ok := m.lookup(id)
 	if !ok {
+		return nil, false
+	}
+	return inst, true
+}
+
+// lookup returns the instance unless a delete is in progress. Callers must
+// hold m.mu.
+func (m *Manager) lookup(id string) (*Instance, bool) {
+	inst, ok := m.instances[id]
+	if !ok || inst.deleting {
 		return nil, false
 	}
 	return inst, true
@@ -81,8 +92,7 @@ func (m *Manager) GetInstance(id string) (middleware.Instance, bool) {
 func (m *Manager) GetInstanceDirect(id string) (*Instance, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	inst, ok := m.instances[id]
-	return inst, ok
+	return m.lookup(id)
 }
 
 // ListInstances returns a snapshot of all active instances.
@@ -166,7 +176,12 @@ func (m *Manager) CreateInstance(ctx context.Context, id string, cfg config.Inst
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, exists := m.instances[id]; exists {
+	if existing, exists := m.instances[id]; exists {
+		// Deliberately not "already exists": a caller that treats that as
+		// "adopt it" would claim an instance about to be dropped.
+		if existing.deleting {
+			return nil, fmt.Errorf("instance %s is being deleted", id)
+		}
 		return nil, fmt.Errorf("instance %s already exists", id)
 	}
 
@@ -199,51 +214,82 @@ func (m *Manager) CreateInstance(ctx context.Context, id string, cfg config.Inst
 // DeleteInstance removes an instance from memory and persistent storage.
 func (m *Manager) DeleteInstance(ctx context.Context, id string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	inst, ok := m.instances[id]
-	if !ok {
-		return fmt.Errorf("instance %s not found", id)
+	inst, present := m.instances[id]
+	if present && inst.deleting {
+		m.mu.Unlock()
+		return fmt.Errorf("instance %s is being deleted", id)
 	}
+	if present {
+		inst.deleting = true
+	}
+	m.mu.Unlock()
 
-	// Log out from WhatsApp to unlink the device, then clean up.
-	wasLoggedIn := false
-	if inst.Service != nil {
-		wasLoggedIn = inst.Service.IsLoggedIn()
-		if wasLoggedIn {
-			if err := inst.Service.Session.Logout(ctx); err != nil {
-				inst.Logger.Warn("logout before delete failed, forcing disconnect", "error", err)
-				inst.Service.DeleteDevice()
-			}
-		} else {
-			inst.Service.DeleteDevice()
+	// Teardown and the store delete run unlocked. The WhatsApp logout is a
+	// network call and the device delete cascades over the account's history,
+	// so holding the manager lock across them blocks every other instance on
+	// this node for that whole time.
+	err := m.teardownAndDelete(ctx, id, inst, present)
+
+	m.mu.Lock()
+	if err != nil {
+		// Leave the entry in place: it is the handle the next attempt needs.
+		if present {
+			inst.deleting = false
 		}
+		m.mu.Unlock()
+		return err
 	}
-
-	// client.Logout() does not emit a LoggedOut event, so publish
-	// explicitly before closing the publisher.
-	if wasLoggedIn && inst.Publisher != nil {
-		logoutEvt := event.NewEvent(id, event.TypeLoggedOut, event.SessionLoggedOutEvent{
-			Reason: "instance_deleted",
-		})
-		if err := inst.Publisher.Publish(ctx, logoutEvt); err != nil {
-			inst.Logger.Error("failed to publish logout event", "error", err)
-		}
-	}
-	if inst.Publisher != nil {
-		_ = inst.Publisher.Close()
-	}
-	if inst.Dedup != nil {
-		inst.Dedup.Close()
-	}
-
 	delete(m.instances, id)
-
-	if err := m.store.DeleteInstance(ctx, id); err != nil {
-		return fmt.Errorf("delete instance from store: %w", err)
-	}
+	m.mu.Unlock()
 
 	m.logger.Info("instance deleted", "id", id)
+	return nil
+}
+
+// teardownAndDelete releases the instance's runtime resources and removes its
+// row. It must run without m.mu held.
+func (m *Manager) teardownAndDelete(ctx context.Context, id string, inst *Instance, present bool) error {
+	// A missing map entry is not a reason to stop. The store row may still be
+	// there, and this call is the only thing that can clear it.
+	if present {
+		// Log out from WhatsApp to unlink the device, then clean up.
+		wasLoggedIn := false
+		if inst.Service != nil {
+			wasLoggedIn = inst.Service.IsLoggedIn()
+			if wasLoggedIn {
+				if err := inst.Service.Session.Logout(ctx); err != nil {
+					inst.Logger.Warn("logout before delete failed, forcing disconnect", "error", err)
+					inst.Service.DeleteDevice()
+				}
+			} else {
+				inst.Service.DeleteDevice()
+			}
+		}
+
+		// client.Logout() does not emit a LoggedOut event, so publish
+		// explicitly before closing the publisher.
+		if wasLoggedIn && inst.Publisher != nil {
+			logoutEvt := event.NewEvent(id, event.TypeLoggedOut, event.SessionLoggedOutEvent{
+				Reason: "instance_deleted",
+			})
+			if err := inst.Publisher.Publish(ctx, logoutEvt); err != nil {
+				inst.Logger.Error("failed to publish logout event", "error", err)
+			}
+		}
+		if inst.Publisher != nil {
+			_ = inst.Publisher.Close()
+		}
+		if inst.Dedup != nil {
+			inst.Dedup.Close()
+		}
+	}
+
+	// Store first, map second. The map entry is the only handle on this
+	// instance, so dropping it before the row is gone strands the row: every
+	// later delete returns at the map lookup and never reaches the store.
+	if err := m.store.DeleteInstance(ctx, id); err != nil && !errors.Is(err, whatsapp.ErrInstanceNotFound) {
+		return fmt.Errorf("delete instance from store: %w", err)
+	}
 	return nil
 }
 
@@ -253,7 +299,7 @@ func (m *Manager) UpdateInstanceConfig(ctx context.Context, id string, cfg confi
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	inst, ok := m.instances[id]
+	inst, ok := m.lookup(id)
 	if !ok {
 		return fmt.Errorf("instance %s not found", id)
 	}
@@ -359,7 +405,7 @@ func (m *Manager) RestartInstance(ctx context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	inst, ok := m.instances[id]
+	inst, ok := m.lookup(id)
 	if !ok {
 		return fmt.Errorf("instance %s not found", id)
 	}
@@ -401,7 +447,7 @@ func (m *Manager) HandleLogout(ctx context.Context, id string) {
 	}
 
 	m.mu.RLock()
-	inst, ok := m.instances[id]
+	inst, ok := m.lookup(id)
 	m.mu.RUnlock()
 	if ok && inst.Publisher != nil {
 		logoutEvt := event.NewEvent(id, event.TypeLoggedOut, event.SessionLoggedOutEvent{
@@ -716,7 +762,7 @@ func (m *Manager) rebuildInstanceService(id string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	inst, ok := m.instances[id]
+	inst, ok := m.lookup(id)
 	if !ok {
 		return
 	}

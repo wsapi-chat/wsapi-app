@@ -28,7 +28,7 @@ jobs:
           version: latest
 
       - name: Test
-        run: go test ./...
+        run: go test -race ./...
 
       - name: Build
         run: go build -o bin/server ./cmd/server
