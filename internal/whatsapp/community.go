@@ -128,7 +128,9 @@ func (c *CommunityService) SetCommunityDescription(ctx context.Context, communit
 	if err != nil {
 		return fmt.Errorf("invalid community JID: %w", err)
 	}
-	return c.client.SetGroupDescription(ctx, jid, description)
+	// Empty previousID/newID let whatsmeow look up the current topic ID and
+	// generate a new one, which is what the deprecated SetGroupDescription did.
+	return c.client.SetGroupTopic(ctx, jid, "", "", description)
 }
 
 // SetCommunityPicture sets the picture of a community.

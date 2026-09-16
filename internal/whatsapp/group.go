@@ -233,7 +233,9 @@ func (g *GroupService) SetGroupDescription(ctx context.Context, groupID string, 
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
-	return g.client.SetGroupDescription(ctx, jid, description)
+	// Empty previousID/newID let whatsmeow look up the current topic ID and
+	// generate a new one, which is what the deprecated SetGroupDescription did.
+	return g.client.SetGroupTopic(ctx, jid, "", "", description)
 }
 
 // SetGroupJoinApprovalMode sets the join approval mode for a group.
@@ -379,14 +381,16 @@ func toGroupInfoResponse(ctx context.Context, info *waTypes.GroupInfo, lids stor
 	}
 
 	return GroupInfoResponse{
-		GroupID:                info.JID.String(),
-		Owner:                  identity.Resolve(ctx, ownerJID, ownerAlt, lids),
-		Name:                   info.Name,
-		CreatedAt:              info.GroupCreated,
-		Description:            info.Topic,
-		IsAnnounce:             info.IsAnnounce,
-		IsLocked:               info.IsLocked,
-		IsEphemeral:            info.IsEphemeral,
+		GroupID:     info.JID.String(),
+		Owner:       identity.Resolve(ctx, ownerJID, ownerAlt, lids),
+		Name:        info.Name,
+		CreatedAt:   info.GroupCreated,
+		Description: info.Topic,
+		IsAnnounce:  info.IsAnnounce,
+		IsLocked:    info.IsLocked,
+		// From the timer, not whatsmeow's IsEphemeral: that flag is set by the
+		// presence of an <ephemeral> node, which CreateGroup now always sends.
+		IsEphemeral:            info.DisappearingTimer > 0,
 		EphemeralExpiration:    int64(info.DisappearingTimer),
 		Participants:           participants,
 		CommunityID:            communityID,

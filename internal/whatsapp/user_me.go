@@ -9,6 +9,7 @@ import (
 	"github.com/wsapi-chat/wsapi-app/internal/identity"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/appstate"
+	waBinary "go.mau.fi/whatsmeow/binary"
 	waTypes "go.mau.fi/whatsmeow/types"
 )
 
@@ -85,8 +86,24 @@ func (a *UserMeService) SetProfilePicture(ctx context.Context, picture []byte) (
 }
 
 // SetStatus sets the about/status text for the WhatsApp account.
+//
+// Bypasses whatsmeow's SetStatusMessage, which now sends a mex mutation that a
+// live account either rejects or accepts without changing the About text. The
+// legacy IQ below is what whatsmeow sent before and still works.
 func (a *UserMeService) SetStatus(ctx context.Context, status string) error {
-	return a.client.SetStatusMessage(ctx, status)
+	_, err := a.client.DangerousInternals().SendIQ(ctx, whatsmeow.DangerousInfoQuery{ //nolint:staticcheck // intentional use of internal API
+		Type:      "set",
+		To:        waTypes.ServerJID,
+		Namespace: "status",
+		Content: []waBinary.Node{{
+			Tag:     "status",
+			Content: []byte(status),
+		}},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set status: %w", err)
+	}
+	return nil
 }
 
 // SendPresence sets the presence state (available or unavailable).

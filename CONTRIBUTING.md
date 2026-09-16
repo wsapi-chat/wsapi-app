@@ -6,7 +6,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ### Prerequisites
 
-- **Go 1.25+** — [install](https://go.dev/doc/install)
+- **Go 1.26+** — [install](https://go.dev/doc/install)
 - **golangci-lint** (optional) — `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 
 ### Building
