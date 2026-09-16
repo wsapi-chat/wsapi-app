@@ -16,7 +16,7 @@ type Publisher interface {
 
 // PublisherFactory creates publishers based on instance configuration.
 type PublisherFactory interface {
-	Create(instanceID, webhookURL, signingSecret string) Publisher
+	Create(instanceID, webhookURL, signingSecret string, publishEvents bool) Publisher
 	Close() error
 }
 
@@ -45,7 +45,12 @@ func NewFactory(cfg *config.Config, logger *slog.Logger) *Factory {
 
 // Create returns a Publisher for the given instance based on the global
 // publishVia setting. The caller (manager) resolves defaults before calling.
-func (f *Factory) Create(instanceID, webhookURL, signingSecret string) Publisher {
+//
+// When publishEvents is false the instance has no delivery target, so its data
+// events are suppressed rather than published only to be discarded. System
+// events are still published, since they track pairing and session state
+// whether or not a webhook is configured.
+func (f *Factory) Create(instanceID, webhookURL, signingSecret string, publishEvents bool) Publisher {
 	var pub Publisher
 
 	switch f.cfg.EventsPublishVia {
@@ -71,6 +76,12 @@ func (f *Factory) Create(instanceID, webhookURL, signingSecret string) Publisher
 	if pub == nil {
 		pub = NewNoopPublisher(f.logger)
 	}
+
+	if !publishEvents {
+		f.logger.Info("data event publishing disabled for instance; system events still published", "instanceId", instanceID)
+		pub = NewSystemEventsOnlyPublisher(pub, f.logger, instanceID)
+	}
+
 	return pub
 }
 

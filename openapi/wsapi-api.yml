@@ -3415,6 +3415,16 @@ components:
             Enable caching of history sync messages during initial pairing for later retrieval
             via POST /session/flush-history. When null/omitted, falls back to the global default
             (`instances.defaults.historySync`).
+        publishEvents:
+          type: boolean
+          nullable: true
+          description: >-
+            Whether data events are published for this instance. When null/omitted, publishing
+            is enabled. Set to `false` for instances that have no delivery target, so data
+            events are not published only to be discarded downstream. System events
+            (`logged_in`, `logged_out`, `login_error`, `initial_sync_finished`) are always
+            published regardless of this setting, since they report pairing and session
+            state.
 
     InstanceConfig:
       type: object
@@ -3453,6 +3463,9 @@ components:
             `initial_sync_finished`) are always delivered regardless of this
             filter and are silently stripped if included in the list.
         historySync:
+          type: boolean
+          nullable: true
+        publishEvents:
           type: boolean
           nullable: true
 

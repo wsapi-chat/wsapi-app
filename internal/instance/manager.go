@@ -124,6 +124,16 @@ func (m *Manager) applyDefaults(cfg *config.InstanceConfig) {
 	if cfg.HistorySync == nil {
 		cfg.HistorySync = d.HistorySync
 	}
+	if cfg.PublishEvents == nil {
+		cfg.PublishEvents = d.PublishEvents
+	}
+}
+
+// publishEventsEnabled reports whether the instance should publish events.
+// Unset (nil) means enabled, so instances that never set the flag — including
+// every instance created before it existed — keep publishing.
+func publishEventsEnabled(cfg *config.InstanceConfig) bool {
+	return cfg.PublishEvents == nil || *cfg.PublishEvents
 }
 
 // logConfigResolution logs which fields use global defaults vs instance overrides.
@@ -200,6 +210,7 @@ func (m *Manager) CreateInstance(ctx context.Context, id string, cfg config.Inst
 		SigningSecret: cfg.SigningSecret,
 		EventFilters:  cfg.EventFilters,
 		HistorySync:   cfg.HistorySync,
+		PublishEvents: cfg.PublishEvents,
 	}
 	if err := m.store.SaveInstance(ctx, rec); err != nil {
 		return nil, fmt.Errorf("persist instance: %w", err)
@@ -317,7 +328,7 @@ func (m *Manager) UpdateInstanceConfig(ctx context.Context, id string, cfg confi
 	cfg.EventFilters = event.StripSystemEvents(cfg.EventFilters)
 
 	inst.Config = cfg
-	inst.Publisher = m.pubFact.Create(id, cfg.WebhookURL, cfg.SigningSecret)
+	inst.Publisher = m.pubFact.Create(id, cfg.WebhookURL, cfg.SigningSecret, publishEventsEnabled(&cfg))
 
 	// Persist updated record.
 	rec := whatsapp.InstanceRecord{
@@ -327,6 +338,7 @@ func (m *Manager) UpdateInstanceConfig(ctx context.Context, id string, cfg confi
 		SigningSecret: cfg.SigningSecret,
 		EventFilters:  cfg.EventFilters,
 		HistorySync:   cfg.HistorySync,
+		PublishEvents: cfg.PublishEvents,
 	}
 	if err := m.store.SaveInstance(ctx, rec); err != nil {
 		return fmt.Errorf("persist instance update: %w", err)
@@ -386,6 +398,7 @@ func (m *Manager) RestoreInstances(ctx context.Context) error {
 			SigningSecret: rec.SigningSecret,
 			EventFilters:  rec.EventFilters,
 			HistorySync:   rec.HistorySync,
+			PublishEvents: rec.PublishEvents,
 		}
 
 		m.applyDefaults(&cfg)
@@ -488,7 +501,7 @@ func (m *Manager) Shutdown() {
 // Must be called with m.mu held (or during init before the manager is shared).
 func (m *Manager) buildInstance(ctx context.Context, id, deviceID string, cfg config.InstanceConfig) *Instance {
 	instLogger := m.logger.With("instanceId", id)
-	pub := m.pubFact.Create(id, cfg.WebhookURL, cfg.SigningSecret)
+	pub := m.pubFact.Create(id, cfg.WebhookURL, cfg.SigningSecret, publishEventsEnabled(&cfg))
 
 	inst := &Instance{
 		ID:        id,

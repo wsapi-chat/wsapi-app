@@ -94,6 +94,12 @@ type InstanceConfig struct {
 	SigningSecret string   `json:"signingSecret,omitempty" yaml:"signingSecret"`
 	EventFilters  []string `json:"eventFilters" yaml:"eventFilters"`
 	HistorySync   *bool    `json:"historySync,omitempty" yaml:"historySync"`
+	// PublishEvents controls whether events are published at all. Nil means
+	// enabled: an instance without an explicit setting keeps publishing, so
+	// existing deployments are unaffected. Set to false for instances that
+	// have no delivery target, to avoid publishing events that would only be
+	// discarded downstream.
+	PublishEvents *bool `json:"publishEvents,omitempty" yaml:"publishEvents"`
 }
 
 type RedisConfig struct {

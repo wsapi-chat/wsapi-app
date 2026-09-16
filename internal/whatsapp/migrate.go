@@ -20,6 +20,7 @@ type waMigration struct {
 
 var allWAMigrations = []waMigration{
 	{description: "create all wsapi tables", migrate: waMigrateV1},
+	{description: "add publish_events to wsapi_instances", migrate: waMigrateV2},
 }
 
 // MigrateCustomTables runs all pending schema migrations for WSAPI custom
@@ -159,6 +160,27 @@ func waMigrateV1(db *sql.DB, dialect string) error {
 		if _, err := db.Exec(stmt); err != nil {
 			return fmt.Errorf("exec: %w", err)
 		}
+	}
+	return nil
+}
+
+// waMigrateV2 adds the publish_events column to wsapi_instances. The column is
+// nullable and defaults to NULL, which is interpreted as "publishing enabled",
+// so existing instances keep their current behaviour.
+func waMigrateV2(db *sql.DB, dialect string) error {
+	var stmt string
+
+	switch dialect {
+	case dialectSQLite:
+		stmt = `ALTER TABLE wsapi_instances ADD COLUMN publish_events INTEGER DEFAULT NULL`
+	case dialectPostgres:
+		stmt = `ALTER TABLE wsapi_instances ADD COLUMN IF NOT EXISTS publish_events BOOLEAN DEFAULT NULL`
+	default:
+		return fmt.Errorf("unsupported dialect: %s", dialect)
+	}
+
+	if _, err := db.Exec(stmt); err != nil {
+		return fmt.Errorf("exec: %w", err)
 	}
 	return nil
 }
