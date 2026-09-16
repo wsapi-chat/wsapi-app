@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-09-15
+
+### Added
+
+- **`publishEvents` per-instance flag** — set to `false` for an instance with no delivery target so its data events are not published only to be discarded. System events (`logged_in`, `logged_out`, `login_error`, `initial_sync_finished`) are always published. Unset means enabled, so existing instances are unaffected
+- **Bounded media downloads** — `WSAPI_MEDIA_MAX_CONCURRENT_DOWNLOADS` (default 2, 0 disables) caps concurrent `/media/download` decrypts process-wide, with a 2-minute per-download timeout
+- **Recipient validation** — `to`, `chatId` and `senderId` are validated before a send, rejecting addresses that cannot route instead of burning the full 75s ack budget
+
+### Changed
+
+- **Go 1.26 is now required**, along with a whatsmeow upgrade to 2026-09-09. whatsmeow migrates `whatsmeow_device` from schema 14 to 15 on first boot; back up the session database before upgrading, rolling back afterwards is not clean
+- **`DELETE /admin/instances/{id}` answers `204` instead of `404`** when the instance exists in neither the store nor memory, making the endpoint idempotent
+- Default HTTP write timeout raised from 60s to 90s so it outlasts whatsmeow's 75s send-ack budget
+- `PublisherFactory.Create` takes an additional `publishEvents` argument (breaking for out-of-tree implementations)
+- Phone validation rejects national numbers given an international prefix, since no country code begins with zero
+- CI runs tests with `-race`
+
+### Fixed
+
+- **Stalled sends returned `400`** instead of `504`, telling callers their request was malformed and discouraging retries on a transient upstream failure
+- **QR pairing could wedge an instance permanently** — reading one code and abandoning the channel let a blocking send park while holding whatsmeow's event-handler read lock, after which the client stopped handling nodes of any tag until restart
+- **Instance deletes could strand a row** — the in-memory entry was dropped before the store row, so a failed store delete left the row unreachable. The manager lock also covered network calls, blocking every other instance operation for the duration
+- Status updates (`PUT /users/me/profile`) stopped changing the About text after the whatsmeow upgrade
+- Groups created through `POST /groups` reported `isEphemeral: true` with no disappearing timer set
+
+### Security
+
+- `golang.org/x/image` v0.45.0, fixing four vulnerabilities reachable from decoding client-supplied images (GO-2026-5031, GO-2026-5032, GO-2026-5062, GO-2026-5066)
+
 ## [2.0.1] - 2026-03-05
 
 ### Added
