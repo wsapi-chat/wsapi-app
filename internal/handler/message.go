@@ -69,7 +69,7 @@ func (m *MediaData) resolveData(ctx context.Context) ([]byte, error) {
 type CommonSendOptions struct {
 	Mentions            []string `json:"mentions,omitempty"`
 	ReplyTo             string   `json:"replyTo,omitempty"`
-	ReplyToSenderID     string   `json:"replyToSenderId,omitempty"`
+	ReplyToSenderID     string   `json:"replyToSenderId,omitempty" validate:"omitempty,recipient"`
 	IsForwarded         bool     `json:"isForwarded,omitempty"`
 	EphemeralExpiration string   `json:"ephemeralExpiration,omitempty" validate:"omitempty,oneof=off 24h 7d 90d"`
 }
@@ -88,14 +88,14 @@ func (o *CommonSendOptions) toSendOptions() whatsapp.SendOptions {
 
 type SendTextRequest struct {
 	CommonSendOptions
-	To   string `json:"to" validate:"required"`
+	To   string `json:"to" validate:"required,recipient"`
 	Text string `json:"text" validate:"required"`
 }
 
 type SendMediaRequest struct {
 	CommonSendOptions
 	MediaData
-	To       string `json:"to" validate:"required"`
+	To       string `json:"to" validate:"required,recipient"`
 	MimeType string `json:"mimeType,omitempty"`
 	Caption  string `json:"caption,omitempty"`
 	ViewOnce bool   `json:"viewOnce,omitempty"`
@@ -117,19 +117,19 @@ type SendDocumentRequest struct {
 type SendStickerRequest struct {
 	CommonSendOptions
 	MediaData
-	To         string `json:"to" validate:"required"`
+	To         string `json:"to" validate:"required,recipient"`
 	IsAnimated bool   `json:"isAnimated,omitempty"`
 }
 
 type SendContactRequest struct {
 	CommonSendOptions
-	To          string `json:"to" validate:"required"`
+	To          string `json:"to" validate:"required,recipient"`
 	DisplayName string `json:"displayName,omitempty" validate:"required_without=VCard"`
 	VCard       string `json:"vcard,omitempty" validate:"required_without=DisplayName"`
 }
 
 type SendLocationRequest struct {
-	To                  string  `json:"to" validate:"required"`
+	To                  string  `json:"to" validate:"required,recipient"`
 	Latitude            float64 `json:"latitude" validate:"min=-90,max=90"`
 	Longitude           float64 `json:"longitude" validate:"min=-180,max=180"`
 	Name                string  `json:"name,omitempty"`
@@ -140,7 +140,7 @@ type SendLocationRequest struct {
 
 type SendLinkRequest struct {
 	CommonSendOptions
-	To            string `json:"to" validate:"required"`
+	To            string `json:"to" validate:"required,recipient"`
 	Text          string `json:"text" validate:"required"`
 	URL           string `json:"url" validate:"required,url"`
 	Title         string `json:"title,omitempty"`
@@ -149,13 +149,13 @@ type SendLinkRequest struct {
 }
 
 type SendReactionRequest struct {
-	To       string `json:"to" validate:"required"`
-	SenderID string `json:"senderId,omitempty"`
+	To       string `json:"to" validate:"required,recipient"`
+	SenderID string `json:"senderId,omitempty" validate:"omitempty,recipient"`
 	Reaction string `json:"reaction"`
 }
 
 type EditMessageRequest struct {
-	To                  string   `json:"to" validate:"required"`
+	To                  string   `json:"to" validate:"required,recipient"`
 	Text                string   `json:"text" validate:"required"`
 	Mentions            []string `json:"mentions,omitempty"`
 	EphemeralExpiration string   `json:"ephemeralExpiration,omitempty" validate:"omitempty,oneof=off 24h 7d 90d"`
@@ -169,32 +169,32 @@ func (r *EditMessageRequest) toSendOptions() whatsapp.SendOptions {
 }
 
 type MarkAsReadRequest struct {
-	ChatID      string `json:"chatId" validate:"required"`
-	SenderID    string `json:"senderId" validate:"required"`
+	ChatID      string `json:"chatId" validate:"required,recipient"`
+	SenderID    string `json:"senderId" validate:"required,recipient"`
 	ReceiptType string `json:"receiptType" validate:"required,oneof=delivered sender read played"`
 }
 
 type StarMessageRequest struct {
-	ChatID   string `json:"chatId" validate:"required"`
-	SenderID string `json:"senderId" validate:"required"`
+	ChatID   string `json:"chatId" validate:"required,recipient"`
+	SenderID string `json:"senderId" validate:"required,recipient"`
 	Starred  bool   `json:"starred"`
 }
 
 type DeleteMessageRequest struct {
-	ChatID   string `json:"chatId" validate:"required"`
-	SenderID string `json:"senderId" validate:"required"`
+	ChatID   string `json:"chatId" validate:"required,recipient"`
+	SenderID string `json:"senderId" validate:"required,recipient"`
 }
 
 type DeleteMessageForMeRequest struct {
-	ChatID    string    `json:"chatId" validate:"required"`
-	SenderID  string    `json:"senderId,omitempty"`
+	ChatID    string    `json:"chatId" validate:"required,recipient"`
+	SenderID  string    `json:"senderId,omitempty" validate:"omitempty,recipient"`
 	IsFromMe  bool      `json:"isFromMe,omitempty"`
 	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 
 type PinMessageRequest struct {
-	ChatID        string `json:"chatId" validate:"required"`
-	SenderID      string `json:"senderId" validate:"required"`
+	ChatID        string `json:"chatId" validate:"required,recipient"`
+	SenderID      string `json:"senderId" validate:"required,recipient"`
 	Pinned        bool   `json:"pinned"`
 	PinExpiration string `json:"pinExpiration,omitempty"`
 }
