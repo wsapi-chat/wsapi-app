@@ -66,10 +66,70 @@ func (s *SessionService) Logout(ctx context.Context) error {
 }
 
 // qrWaitTimeout caps how long a single QR-generation request will wait for a
-// `code` event from whatsmeow. Kept well below the upstream HTTP-client budget
-// (admin → wsapi-app is 60s) so we always return a clean response or a clean
-// cancellation, not a race against a closing TCP connection.
+// `code` event from whatsmeow. Kept well below a typical HTTP client budget so
+// we always return a clean response or a clean cancellation, not a race against
+// a closing TCP connection.
 const qrWaitTimeout = 30 * time.Second
+
+// qrSessionMaxLifetime bounds the background drain below, which otherwise never
+// returns: whatsmeow leaves the channel open when the client disconnects as
+// expected, which is what every poll of this endpoint causes.
+//
+// It has to outlast any pairing that could still succeed, since a drain that
+// gives up early hands the channel back to the deadlock it prevents. The bound
+// is only here so that hammering the QR endpoint cannot pile up goroutines.
+const qrSessionMaxLifetime = 45 * time.Minute
+
+// drainQRChannel forwards the first item from src and then keeps consuming src
+// until it closes (or maxLifetime elapses), discarding what it reads.
+//
+// The consuming is the point, not the forwarding. whatsmeow's qrChannel is a
+// registered event handler, so it runs inside dispatchEvent holding a read lock
+// on the handler list, and several of its branches send to this channel with a
+// plain blocking send. Let one find a full buffer and it parks forever holding
+// that read lock; the RemoveEventHandler it schedules then blocks on the write
+// lock, and since Go's RWMutex hands off to a waiting writer before admitting
+// readers, every later dispatchEvent on that client blocks behind it. The
+// client stops handling nodes of every tag until the process restarts.
+//
+// One abandoned session cannot fill the buffer: WhatsApp sends about six refs
+// per pair-device node and the buffer holds eight. It takes a second emitter,
+// which is what polling produces: an expected disconnect emits no Disconnected
+// event, so the previous poll's handler is never retired and starts emitting
+// again after the reconnect. The risk tracks how many times the endpoint is
+// polled before the scan lands.
+func drainQRChannel(src <-chan whatsmeow.QRChannelItem, maxLifetime time.Duration) <-chan whatsmeow.QRChannelItem {
+	first := make(chan whatsmeow.QRChannelItem, 1)
+
+	go func() {
+		defer close(first)
+
+		// Deadline rather than a plain receive loop because whatsmeow's QR
+		// emitter returns without closing the channel when the client
+		// disconnects as expected — which is exactly what the next poll of
+		// this endpoint does.
+		expiry := time.NewTimer(maxLifetime)
+		defer expiry.Stop()
+
+		forwarded := false
+		for {
+			select {
+			case item, ok := <-src:
+				if !ok {
+					return
+				}
+				if !forwarded {
+					first <- item
+					forwarded = true
+				}
+			case <-expiry.C:
+				return
+			}
+		}
+	}()
+
+	return first
+}
 
 // GenerateQRImage generates a QR code image for WhatsApp Web login and returns
 // the PNG bytes. Honors ctx for the wait — if the inbound HTTP request is
@@ -88,10 +148,11 @@ func (s *SessionService) GenerateQRImage(ctx context.Context) ([]byte, error) {
 	// caused whatsmeow to tear down the WhatsApp websocket the moment the
 	// handler returned, so by the time the user scanned the QR PNG we just
 	// sent back, the underlying ref token was already invalid.
-	qrChan, err := s.client.GetQRChannel(context.Background())
+	rawQRChan, err := s.client.GetQRChannel(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get QR channel: %v", err)
 	}
+	qrChan := drainQRChannel(rawQRChan, qrSessionMaxLifetime)
 
 	go func() {
 		if err := s.client.Connect(); err != nil {
@@ -139,10 +200,11 @@ func (s *SessionService) GenerateQRCode(ctx context.Context) (string, error) {
 
 	s.client.Disconnect()
 
-	qrChan, err := s.client.GetQRChannel(context.Background())
+	rawQRChan, err := s.client.GetQRChannel(context.Background())
 	if err != nil {
 		return "", fmt.Errorf("failed to get QR channel: %v", err)
 	}
+	qrChan := drainQRChannel(rawQRChan, qrSessionMaxLifetime)
 
 	go func() {
 		if err := s.client.Connect(); err != nil {
