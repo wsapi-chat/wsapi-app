@@ -19,6 +19,10 @@ type Instance struct {
 	Publisher publisher.Publisher
 	Dedup     *event.Dedup
 	Logger    *slog.Logger
+
+	// deleting marks a delete in progress. Guarded by Manager.mu; lookups
+	// skip the instance so nothing uses a service that is being torn down.
+	deleting bool
 }
 
 // GetAPIKey returns the instance-level API key, satisfying the

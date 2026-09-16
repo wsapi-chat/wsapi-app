@@ -3,10 +3,15 @@ package whatsapp
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 )
+
+// ErrInstanceNotFound means the row was already gone. Callers deleting an
+// instance should treat it as success: the desired end state is the same.
+var ErrInstanceNotFound = errors.New("instance not found")
 
 // InstanceRecord is the persisted representation of a managed instance.
 type InstanceRecord struct {
@@ -211,7 +216,7 @@ func (s *InstanceStore) DeleteInstance(ctx context.Context, id string) error {
 	}
 	n, _ := res.RowsAffected()
 	if n == 0 {
-		return fmt.Errorf("instance %s not found", id)
+		return fmt.Errorf("instance %s: %w", id, ErrInstanceNotFound)
 	}
 	return nil
 }
