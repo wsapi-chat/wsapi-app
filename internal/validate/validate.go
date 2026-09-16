@@ -9,7 +9,12 @@ import (
 var v *validator.Validate
 
 var instanceIDRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$`)
-var phoneRegex = regexp.MustCompile(`^\+?\d{7,15}$`)
+
+// A number must start with its country code, and no country code begins with
+// zero - a leading zero is a national trunk prefix, not part of the
+// international number. Rejecting it here turns a slow, opaque failure from
+// WhatsApp into an immediate, actionable error.
+var phoneRegex = regexp.MustCompile(`^\+?[1-9]\d{6,14}$`)
 
 // Phone validates that a string looks like an international phone number.
 func Phone(s string) bool {
