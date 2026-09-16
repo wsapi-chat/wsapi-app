@@ -24,6 +24,9 @@ logging:
 
 httpProxy: "" # HTTP proxy URL for outbound requests (env: WSAPI_HTTP_PROXY)
 
+mediaMaxFileSize: "100MB" # Per-file size cap for /media/download (env: WSAPI_MEDIA_MAX_FILE_SIZE)
+mediaMaxConcurrentDownloads: 2 # Process-wide cap on concurrent /media/download decrypts; 0 = unlimited (env: WSAPI_MEDIA_MAX_CONCURRENT_DOWNLOADS)
+
 instanceMode: "single" # "single" or "multi" (env: WSAPI_INSTANCE_MODE)
                         # single: auto-provisions a default instance, no X-Instance-Id header needed, no admin API (default)
                         # multi: instances managed via /admin/instances, X-Instance-Id required

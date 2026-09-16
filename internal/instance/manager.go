@@ -25,32 +25,41 @@ import (
 // Manager manages the lifecycle of WhatsApp instances. It keeps a thread-safe
 // in-memory map of active instances backed by persistent storage.
 type Manager struct {
-	mu               sync.RWMutex
-	instances        map[string]*Instance
-	store            *whatsapp.InstanceStore
-	container        *sqlstore.Container
-	chatStore        *whatsapp.ChatStore
-	contactStore     *whatsapp.ContactStore
-	historySyncStore *whatsapp.HistorySyncStore
-	cfg              *config.Config
-	pubFact          publisher.PublisherFactory
-	logger           *slog.Logger
-	waLogger         *slog.Logger
+	mu                 sync.RWMutex
+	instances          map[string]*Instance
+	store              *whatsapp.InstanceStore
+	container          *sqlstore.Container
+	chatStore          *whatsapp.ChatStore
+	contactStore       *whatsapp.ContactStore
+	historySyncStore   *whatsapp.HistorySyncStore
+	cfg                *config.Config
+	pubFact            publisher.PublisherFactory
+	logger             *slog.Logger
+	waLogger           *slog.Logger
+	mediaDownloadSlots chan struct{}
 }
 
 // NewManager creates a new instance manager.
+//
+// The media-download semaphore is built here and shared by every instance, so
+// the concurrency cap applies process-wide.
 func NewManager(st *whatsapp.InstanceStore, container *sqlstore.Container, chatStore *whatsapp.ChatStore, contactStore *whatsapp.ContactStore, historySyncStore *whatsapp.HistorySyncStore, cfg *config.Config, pubFactory publisher.PublisherFactory, logger, waLogger *slog.Logger) *Manager {
+	var mediaSlots chan struct{}
+	if cfg.MediaMaxConcurrentDownloads > 0 {
+		mediaSlots = make(chan struct{}, cfg.MediaMaxConcurrentDownloads)
+	}
 	return &Manager{
-		instances:        make(map[string]*Instance),
-		store:            st,
-		container:        container,
-		chatStore:        chatStore,
-		contactStore:     contactStore,
-		historySyncStore: historySyncStore,
-		cfg:              cfg,
-		pubFact:          pubFactory,
-		logger:           logger,
-		waLogger:         waLogger,
+		instances:          make(map[string]*Instance),
+		store:              st,
+		container:          container,
+		chatStore:          chatStore,
+		contactStore:       contactStore,
+		historySyncStore:   historySyncStore,
+		cfg:                cfg,
+		pubFact:            pubFactory,
+		logger:             logger,
+		waLogger:           waLogger,
+		mediaDownloadSlots: mediaSlots,
 	}
 }
 
@@ -461,7 +470,7 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 	dedup := inst.Dedup
 
 	waInstLogger := m.waLogger.With("instanceId", id)
-	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore, m.cfg.MediaMaxFileSizeBytes())
+	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore, m.cfg.MediaMaxFileSizeBytes(), m.mediaDownloadSlots)
 	if err != nil {
 		return fmt.Errorf("create whatsapp service: %w", err)
 	}
