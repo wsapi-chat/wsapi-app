@@ -11,17 +11,18 @@ import (
 )
 
 type Config struct {
-	Server           ServerConfig    `yaml:"server"`
-	Database         DatabaseConfig  `yaml:"database"`
-	Whatsmeow        WhatsmeowConfig `yaml:"whatsmeow"`
-	Auth             AuthConfig      `yaml:"auth"`
-	Logging          LoggingConfig   `yaml:"logging"`
-	InstanceMode     string          `yaml:"instanceMode"`     // "single" or "multi" (default: "single")
-	EventsPublishVia string          `yaml:"eventsPublishVia"` // "webhook", "redis", or "none"
-	InstanceDefaults InstanceConfig  `yaml:"instanceDefaults"`
-	HTTPProxy        string          `yaml:"httpProxy"`
-	MediaMaxFileSize string          `yaml:"mediaMaxFileSize"`
-	Redis            *RedisConfig    `yaml:"redis,omitempty"`
+	Server                      ServerConfig    `yaml:"server"`
+	Database                    DatabaseConfig  `yaml:"database"`
+	Whatsmeow                   WhatsmeowConfig `yaml:"whatsmeow"`
+	Auth                        AuthConfig      `yaml:"auth"`
+	Logging                     LoggingConfig   `yaml:"logging"`
+	InstanceMode                string          `yaml:"instanceMode"`     // "single" or "multi" (default: "single")
+	EventsPublishVia            string          `yaml:"eventsPublishVia"` // "webhook", "redis", or "none"
+	InstanceDefaults            InstanceConfig  `yaml:"instanceDefaults"`
+	HTTPProxy                   string          `yaml:"httpProxy"`
+	MediaMaxFileSize            string          `yaml:"mediaMaxFileSize"`
+	MediaMaxConcurrentDownloads int             `yaml:"mediaMaxConcurrentDownloads"`
+	Redis                       *RedisConfig    `yaml:"redis,omitempty"`
 }
 
 type ServerConfig struct {
@@ -106,9 +107,10 @@ type RedisConfig struct {
 
 func defaults() *Config {
 	return &Config{
-		InstanceMode:     "single",
-		EventsPublishVia: "webhook",
-		MediaMaxFileSize: "100MB",
+		InstanceMode:                "single",
+		EventsPublishVia:            "webhook",
+		MediaMaxFileSize:            "100MB",
+		MediaMaxConcurrentDownloads: 2,
 		Server: ServerConfig{
 			Port:            8080,
 			ReadTimeout:     "30s",
@@ -192,6 +194,11 @@ func applyEnv(cfg *Config) {
 
 	// Media download size limit
 	setIfEnv(&cfg.MediaMaxFileSize, "WSAPI_MEDIA_MAX_FILE_SIZE")
+	if v := os.Getenv("WSAPI_MEDIA_MAX_CONCURRENT_DOWNLOADS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			cfg.MediaMaxConcurrentDownloads = n
+		}
+	}
 
 	// Event publishing
 	setIfEnv(&cfg.EventsPublishVia, "WSAPI_PUBLISH_VIA")

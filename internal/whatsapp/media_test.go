@@ -5,7 +5,10 @@ import (
 	"errors"
 	"io"
 	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"go.mau.fi/whatsmeow"
 
@@ -185,6 +188,220 @@ func TestDownloadByID_MemoryBounded(t *testing.T) {
 	}
 	if n != payloadSize {
 		t.Fatalf("expected %d bytes streamed, got %d", payloadSize, n)
+	}
+}
+
+// blockingDownloader holds Download until release is closed, so tests can
+// stage concurrent requests deterministically.
+type blockingDownloader struct {
+	inFlight int32
+	peak     int32
+	release  chan struct{}
+}
+
+func (b *blockingDownloader) Download(ctx context.Context, _ whatsmeow.DownloadableMessage) ([]byte, error) {
+	cur := atomic.AddInt32(&b.inFlight, 1)
+	for {
+		peak := atomic.LoadInt32(&b.peak)
+		if cur <= peak || atomic.CompareAndSwapInt32(&b.peak, peak, cur) {
+			break
+		}
+	}
+	defer atomic.AddInt32(&b.inFlight, -1)
+
+	select {
+	case <-b.release:
+		return []byte("ok"), nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// TestDownloadByID_ConcurrencySlotsCap verifies the semaphore caps the number
+// of simultaneous Download calls. With slots=2 and 5 concurrent requests, peak
+// in-flight must stay at 2.
+func TestDownloadByID_ConcurrencySlotsCap(t *testing.T) {
+	dl := &blockingDownloader{release: make(chan struct{})}
+	svc := &MediaService{
+		dl:    dl,
+		slots: make(chan struct{}, 2),
+	}
+
+	const requests = 5
+	var wg sync.WaitGroup
+	wg.Add(requests)
+	for i := 0; i < requests; i++ {
+		go func() {
+			defer wg.Done()
+			result, err := svc.DownloadByID(context.Background(), encodeTestMediaID(8))
+			if err != nil {
+				t.Errorf("download failed: %v", err)
+				return
+			}
+			_ = result.Body.Close()
+		}()
+	}
+
+	// Give goroutines time to all reach the semaphore + downloader.
+	// Two should be inside Download; three should be parked on the slot acquire.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if atomic.LoadInt32(&dl.inFlight) == 2 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if got := atomic.LoadInt32(&dl.inFlight); got != 2 {
+		close(dl.release)
+		wg.Wait()
+		t.Fatalf("expected 2 concurrent downloads, got %d", got)
+	}
+
+	close(dl.release)
+	wg.Wait()
+
+	if peak := atomic.LoadInt32(&dl.peak); peak > 2 {
+		t.Fatalf("peak concurrency %d exceeded slot cap of 2", peak)
+	}
+}
+
+// TestDownloadByID_ReleasesSlotOnError verifies a failing Download still
+// returns its slot, so the cap doesn't leak under error conditions.
+func TestDownloadByID_ReleasesSlotOnError(t *testing.T) {
+	svc := &MediaService{
+		dl:    &mockDownloader{err: errors.New("network blew up")},
+		slots: make(chan struct{}, 1),
+	}
+
+	for i := 0; i < 5; i++ {
+		_, err := svc.DownloadByID(context.Background(), encodeTestMediaID(8))
+		if err == nil {
+			t.Fatalf("iteration %d: expected error, got nil", i)
+		}
+	}
+
+	// If a slot leaked, the channel would be full and this acquire would block.
+	select {
+	case svc.slots <- struct{}{}:
+		<-svc.slots
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("slot leaked after failed download")
+	}
+}
+
+// TestDownloadByID_NilSlotsUnlimited verifies that a nil slots channel imposes
+// no concurrency cap (the unlimited / 0-config case).
+func TestDownloadByID_NilSlotsUnlimited(t *testing.T) {
+	dl := &blockingDownloader{release: make(chan struct{})}
+	svc := &MediaService{
+		dl:    dl,
+		slots: nil,
+	}
+
+	const requests = 10
+	var wg sync.WaitGroup
+	wg.Add(requests)
+	for i := 0; i < requests; i++ {
+		go func() {
+			defer wg.Done()
+			result, err := svc.DownloadByID(context.Background(), encodeTestMediaID(8))
+			if err != nil {
+				t.Errorf("download failed: %v", err)
+				return
+			}
+			_ = result.Body.Close()
+		}()
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if atomic.LoadInt32(&dl.inFlight) == requests {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if got := atomic.LoadInt32(&dl.inFlight); got != requests {
+		close(dl.release)
+		wg.Wait()
+		t.Fatalf("expected %d concurrent downloads with nil slots, got %d", requests, got)
+	}
+
+	close(dl.release)
+	wg.Wait()
+}
+
+// TestDownloadByID_TimeoutFires verifies a stuck Download is bounded by the
+// service's downloadTimeout — the slot does not stay held forever.
+func TestDownloadByID_TimeoutFires(t *testing.T) {
+	dl := &blockingDownloader{release: make(chan struct{})}
+	defer close(dl.release) // unblock any stragglers on test exit
+
+	svc := &MediaService{
+		dl:              dl,
+		slots:           make(chan struct{}, 1),
+		downloadTimeout: 50 * time.Millisecond,
+	}
+
+	start := time.Now()
+	_, err := svc.DownloadByID(context.Background(), encodeTestMediaID(8))
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if elapsed > time.Second {
+		t.Fatalf("download took %v, expected ~50ms timeout", elapsed)
+	}
+
+	// Slot should have been released by the deferred receive.
+	select {
+	case svc.slots <- struct{}{}:
+		<-svc.slots
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("slot leaked after timeout")
+	}
+}
+
+// TestDownloadByID_AcquireRespectsContextCancellation verifies that callers
+// blocked waiting for a slot unblock when the request context is cancelled,
+// instead of holding the goroutine indefinitely.
+func TestDownloadByID_AcquireRespectsContextCancellation(t *testing.T) {
+	dl := &blockingDownloader{release: make(chan struct{})}
+	defer close(dl.release)
+
+	svc := &MediaService{
+		dl:    dl,
+		slots: make(chan struct{}, 1),
+	}
+
+	// Fill the only slot with a long-running download.
+	go func() {
+		_, _ = svc.DownloadByID(context.Background(), encodeTestMediaID(8))
+	}()
+
+	// Wait until the slot is taken.
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) && atomic.LoadInt32(&dl.inFlight) == 0 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if atomic.LoadInt32(&dl.inFlight) == 0 {
+		t.Fatal("first download did not reach Download")
+	}
+
+	// Second caller comes in with a context that's already cancelled.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	start := time.Now()
+	_, err := svc.DownloadByID(ctx, encodeTestMediaID(8))
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got: %v", err)
+	}
+	if elapsed > 200*time.Millisecond {
+		t.Fatalf("cancelled caller waited %v, should return immediately", elapsed)
 	}
 }
 

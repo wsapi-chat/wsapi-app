@@ -22,11 +22,22 @@ type mediaDownloader interface {
 	Download(ctx context.Context, msg whatsmeow.DownloadableMessage) ([]byte, error)
 }
 
+// defaultDownloadTimeout caps how long a single whatsmeow Download call may
+// hold a concurrency slot. 2 minutes is generous for the 100 MB file cap and
+// prevents a stuck peer from indefinitely starving other requests.
+const defaultDownloadTimeout = 2 * time.Minute
+
 // MediaService wraps the whatsmeow client for media download operations.
+//
+// slots, when non-nil, caps the number of concurrent in-flight Download calls
+// across all instances sharing this channel. A nil channel means unlimited.
+// downloadTimeout caps how long a single Download may hold a slot.
 type MediaService struct {
-	dl          mediaDownloader
-	logger      *slog.Logger
-	maxFileSize int64
+	dl              mediaDownloader
+	logger          *slog.Logger
+	maxFileSize     int64
+	slots           chan struct{}
+	downloadTimeout time.Duration
 }
 
 // MediaDownloadResult holds the result of a media download.
@@ -60,7 +71,23 @@ func (m *MediaService) DownloadByID(ctx context.Context, mediaID string) (*Media
 		return nil, fmt.Errorf("unsupported media type: %s", mediaInfo.MediaType)
 	}
 
-	data, err := m.dl.Download(ctx, downloadableMsg)
+	if m.slots != nil {
+		select {
+		case m.slots <- struct{}{}:
+			defer func() { <-m.slots }()
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	timeout := m.downloadTimeout
+	if timeout <= 0 {
+		timeout = defaultDownloadTimeout
+	}
+	dlCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	data, err := m.dl.Download(dlCtx, downloadableMsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download media: %v", err)
 	}
