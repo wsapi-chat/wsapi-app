@@ -233,7 +233,9 @@ func (g *GroupService) SetGroupDescription(ctx context.Context, groupID string, 
 	if err != nil {
 		return fmt.Errorf("invalid group JID: %w", err)
 	}
-	return g.client.SetGroupDescription(ctx, jid, description)
+	// Empty previousID/newID let whatsmeow look up the current topic ID and
+	// generate a new one, which is what the deprecated SetGroupDescription did.
+	return g.client.SetGroupTopic(ctx, jid, "", "", description)
 }
 
 // SetGroupJoinApprovalMode sets the join approval mode for a group.

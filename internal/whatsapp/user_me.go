@@ -86,7 +86,9 @@ func (a *UserMeService) SetProfilePicture(ctx context.Context, picture []byte) (
 
 // SetStatus sets the about/status text for the WhatsApp account.
 func (a *UserMeService) SetStatus(ctx context.Context, status string) error {
-	return a.client.SetStatusMessage(ctx, status)
+	// Text is the only field we expose; Emoji and Duration stay unset so the
+	// status behaves the same as before whatsmeow moved this to a mex query.
+	return a.client.SetStatusMessage(ctx, waTypes.SetStatusInput{Text: &status})
 }
 
 // SendPresence sets the presence state (available or unavailable).
