@@ -381,14 +381,16 @@ func toGroupInfoResponse(ctx context.Context, info *waTypes.GroupInfo, lids stor
 	}
 
 	return GroupInfoResponse{
-		GroupID:                info.JID.String(),
-		Owner:                  identity.Resolve(ctx, ownerJID, ownerAlt, lids),
-		Name:                   info.Name,
-		CreatedAt:              info.GroupCreated,
-		Description:            info.Topic,
-		IsAnnounce:             info.IsAnnounce,
-		IsLocked:               info.IsLocked,
-		IsEphemeral:            info.IsEphemeral,
+		GroupID:     info.JID.String(),
+		Owner:       identity.Resolve(ctx, ownerJID, ownerAlt, lids),
+		Name:        info.Name,
+		CreatedAt:   info.GroupCreated,
+		Description: info.Topic,
+		IsAnnounce:  info.IsAnnounce,
+		IsLocked:    info.IsLocked,
+		// From the timer, not whatsmeow's IsEphemeral: that flag is set by the
+		// presence of an <ephemeral> node, which CreateGroup now always sends.
+		IsEphemeral:            info.DisappearingTimer > 0,
 		EphemeralExpiration:    int64(info.DisappearingTimer),
 		Participants:           participants,
 		CommunityID:            communityID,
