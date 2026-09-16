@@ -40,6 +40,7 @@ type CreateInstanceRequest struct {
 	SigningSecret string   `json:"signingSecret,omitempty"`
 	EventFilters  []string `json:"eventFilters,omitempty"`
 	HistorySync   *bool    `json:"historySync,omitempty"`
+	PublishEvents *bool    `json:"publishEvents,omitempty"`
 }
 
 func (h *InstanceHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +55,7 @@ func (h *InstanceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SigningSecret: req.SigningSecret,
 		EventFilters:  req.EventFilters,
 		HistorySync:   req.HistorySync,
+		PublishEvents: req.PublishEvents,
 	}
 
 	inst, err := h.mgr.CreateInstance(r.Context(), req.ID, cfg)

@@ -39,6 +39,7 @@ instanceDefaults:
   signingSecret: "" # Default HMAC signing secret (env: WSAPI_DEFAULT_SIGNING_SECRET)
   eventFilters: [] # Default event filters (env: WSAPI_DEFAULT_EVENT_FILTERS)
   historySync: # Default history sync (env: WSAPI_DEFAULT_HISTORY_SYNC)
+  publishEvents: # Default event publishing; false suppresses data events for instances with no delivery target
 
 eventsPublishVia: "webhook" # "webhook", "redis", or "none" (env: WSAPI_PUBLISH_VIA)
 

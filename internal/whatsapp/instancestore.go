@@ -22,6 +22,7 @@ type InstanceRecord struct {
 	SigningSecret string     `json:"signingSecret"`
 	EventFilters  []string   `json:"eventFilters"`
 	HistorySync   *bool      `json:"historySync"`
+	PublishEvents *bool      `json:"publishEvents"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	UpdatedAt     time.Time  `json:"updatedAt"`
 	LoggedInAt    *time.Time `json:"loggedInAt,omitempty"`
@@ -48,32 +49,39 @@ func (s *InstanceStore) SaveInstance(ctx context.Context, inst InstanceRecord) e
 		historySync = sql.NullBool{Bool: *inst.HistorySync, Valid: true}
 	}
 
+	var publishEvents sql.NullBool
+	if inst.PublishEvents != nil {
+		publishEvents = sql.NullBool{Bool: *inst.PublishEvents, Valid: true}
+	}
+
 	q := `
-		INSERT INTO wsapi_instances (id, api_key, webhook_url, signing_secret, event_filters, history_sync)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO wsapi_instances (id, api_key, webhook_url, signing_secret, event_filters, history_sync, publish_events)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			api_key        = excluded.api_key,
 			webhook_url    = excluded.webhook_url,
 			signing_secret = excluded.signing_secret,
 			event_filters  = excluded.event_filters,
 			history_sync   = excluded.history_sync,
+			publish_events = excluded.publish_events,
 			updated_at     = CURRENT_TIMESTAMP
 	`
 	if s.dialect == dialectPostgres {
 		q = `
-			INSERT INTO wsapi_instances (id, api_key, webhook_url, signing_secret, event_filters, history_sync)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO wsapi_instances (id, api_key, webhook_url, signing_secret, event_filters, history_sync, publish_events)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT(id) DO UPDATE SET
 				api_key        = EXCLUDED.api_key,
 				webhook_url    = EXCLUDED.webhook_url,
 				signing_secret = EXCLUDED.signing_secret,
 				event_filters  = EXCLUDED.event_filters,
 				history_sync   = EXCLUDED.history_sync,
+				publish_events = EXCLUDED.publish_events,
 				updated_at     = NOW()
 		`
 	}
 
-	_, err := s.db.ExecContext(ctx, q, inst.ID, inst.APIKey, inst.WebhookURL, inst.SigningSecret, filters, historySync)
+	_, err := s.db.ExecContext(ctx, q, inst.ID, inst.APIKey, inst.WebhookURL, inst.SigningSecret, filters, historySync, publishEvents)
 	if err != nil {
 		return fmt.Errorf("save instance %s: %w", inst.ID, err)
 	}
@@ -83,24 +91,24 @@ func (s *InstanceStore) SaveInstance(ctx context.Context, inst InstanceRecord) e
 func (s *InstanceStore) GetInstance(ctx context.Context, id string) (InstanceRecord, error) {
 	q := `
 		SELECT id, device_id, api_key, webhook_url, signing_secret, event_filters,
-		       history_sync, created_at, updated_at, logged_in_at, logged_out_at
+		       history_sync, publish_events, created_at, updated_at, logged_in_at, logged_out_at
 		FROM wsapi_instances WHERE id = ?
 	`
 	if s.dialect == dialectPostgres {
 		q = `
 			SELECT id, device_id, api_key, webhook_url, signing_secret, event_filters,
-			       history_sync, created_at, updated_at, logged_in_at, logged_out_at
+			       history_sync, publish_events, created_at, updated_at, logged_in_at, logged_out_at
 			FROM wsapi_instances WHERE id = $1
 		`
 	}
 
 	var rec InstanceRecord
-	var historySync sql.NullBool
+	var historySync, publishEvents sql.NullBool
 
 	if s.dialect == dialectPostgres {
 		var loggedInAt, loggedOutAt sql.NullTime
 		err := s.db.QueryRowContext(ctx, q, id).Scan(&rec.ID, &rec.DeviceID, &rec.APIKey, &rec.WebhookURL, &rec.SigningSecret,
-			&scanFilters{&rec.EventFilters}, &historySync, &rec.CreatedAt, &rec.UpdatedAt, &loggedInAt, &loggedOutAt)
+			&scanFilters{&rec.EventFilters}, &historySync, &publishEvents, &rec.CreatedAt, &rec.UpdatedAt, &loggedInAt, &loggedOutAt)
 		if err == sql.ErrNoRows {
 			return rec, fmt.Errorf("instance %s not found", id)
 		}
@@ -120,7 +128,7 @@ func (s *InstanceStore) GetInstance(ctx context.Context, id string) (InstanceRec
 		var createdAt, updatedAt string
 		var loggedInAt, loggedOutAt sql.NullString
 		err := s.db.QueryRowContext(ctx, q, id).Scan(&rec.ID, &rec.DeviceID, &rec.APIKey, &rec.WebhookURL, &rec.SigningSecret,
-			&filters, &historySync, &createdAt, &updatedAt, &loggedInAt, &loggedOutAt)
+			&filters, &historySync, &publishEvents, &createdAt, &updatedAt, &loggedInAt, &loggedOutAt)
 		if err == sql.ErrNoRows {
 			return rec, fmt.Errorf("instance %s not found", id)
 		}
@@ -143,13 +151,16 @@ func (s *InstanceStore) GetInstance(ctx context.Context, id string) (InstanceRec
 	if historySync.Valid {
 		rec.HistorySync = &historySync.Bool
 	}
+	if publishEvents.Valid {
+		rec.PublishEvents = &publishEvents.Bool
+	}
 	return rec, nil
 }
 
 func (s *InstanceStore) ListInstances(ctx context.Context) ([]InstanceRecord, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, device_id, api_key, webhook_url, signing_secret, event_filters,
-		       history_sync, created_at, updated_at, logged_in_at, logged_out_at
+		       history_sync, publish_events, created_at, updated_at, logged_in_at, logged_out_at
 		FROM wsapi_instances ORDER BY created_at ASC
 	`)
 	if err != nil {
@@ -160,12 +171,12 @@ func (s *InstanceStore) ListInstances(ctx context.Context) ([]InstanceRecord, er
 	var records []InstanceRecord
 	for rows.Next() {
 		var rec InstanceRecord
-		var historySync sql.NullBool
+		var historySync, publishEvents sql.NullBool
 
 		if s.dialect == dialectPostgres {
 			var loggedInAt, loggedOutAt sql.NullTime
 			if err := rows.Scan(&rec.ID, &rec.DeviceID, &rec.APIKey, &rec.WebhookURL, &rec.SigningSecret,
-				&scanFilters{&rec.EventFilters}, &historySync, &rec.CreatedAt, &rec.UpdatedAt, &loggedInAt, &loggedOutAt); err != nil {
+				&scanFilters{&rec.EventFilters}, &historySync, &publishEvents, &rec.CreatedAt, &rec.UpdatedAt, &loggedInAt, &loggedOutAt); err != nil {
 				return nil, fmt.Errorf("scan instance row: %w", err)
 			}
 			if loggedInAt.Valid {
@@ -181,7 +192,7 @@ func (s *InstanceStore) ListInstances(ctx context.Context) ([]InstanceRecord, er
 			var createdAt, updatedAt string
 			var loggedInAt, loggedOutAt sql.NullString
 			if err := rows.Scan(&rec.ID, &rec.DeviceID, &rec.APIKey, &rec.WebhookURL, &rec.SigningSecret,
-				&filters, &historySync, &createdAt, &updatedAt, &loggedInAt, &loggedOutAt); err != nil {
+				&filters, &historySync, &publishEvents, &createdAt, &updatedAt, &loggedInAt, &loggedOutAt); err != nil {
 				return nil, fmt.Errorf("scan instance row: %w", err)
 			}
 			rec.EventFilters = splitFilters(filters)
@@ -199,6 +210,9 @@ func (s *InstanceStore) ListInstances(ctx context.Context) ([]InstanceRecord, er
 
 		if historySync.Valid {
 			rec.HistorySync = &historySync.Bool
+		}
+		if publishEvents.Valid {
+			rec.PublishEvents = &publishEvents.Bool
 		}
 		records = append(records, rec)
 	}
