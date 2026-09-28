@@ -12,7 +12,7 @@ Every event is wrapped in a standard envelope:
   "instanceId": "my-instance",
   "eventType": "message",
   "receivedAt": "2026-02-17T12:00:00Z",
-  "data": { ... }
+  "eventData": { ... }
 }
 ```
 
@@ -22,7 +22,7 @@ Every event is wrapped in a standard envelope:
 | `instanceId` | Instance that produced the event |
 | `eventType` | Event type string (see table below) |
 | `receivedAt` | RFC 3339 timestamp |
-| `data` | Event-specific payload |
+| `eventData` | Event-specific payload |
 
 ## Event Types
 
@@ -106,7 +106,7 @@ The `logged_out` event is published under all logout circumstances:
 |-------|-------------|---------|
 | Server-side logout (401, device removed from phone) | `"server_logout"` | whatsmeow `LoggedOut` event |
 | API logout (`POST /session/logout`) | `"api_logout"` | `Manager.HandleLogout()` |
-| Instance deletion (`DELETE /instances/{id}`) | `"instance_deleted"` | `Manager.DeleteInstance()` |
+| Instance deletion (`DELETE /admin/instances/{id}`) | `"instance_deleted"` | `Manager.DeleteInstance()` |
 
 ## Event Filtering
 
@@ -164,10 +164,11 @@ function verifySignature(body, signature, secret) {
     .createHmac('sha256', secret)
     .update(body)
     .digest('hex');
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected)
-  );
+  if (typeof signature !== 'string') return false;
+  const received = Buffer.from(signature);
+  const expectedBytes = Buffer.from(expected);
+  return received.length === expectedBytes.length &&
+    crypto.timingSafeEqual(received, expectedBytes);
 }
 
 // In your webhook handler:
@@ -185,7 +186,7 @@ def verify_signature(body: bytes, signature: str, secret: str) -> bool:
     expected = 'sha256=' + hmac.new(
         secret.encode(), body, hashlib.sha256
     ).hexdigest()
-    return hmac.compare_digest(signature, expected)
+    return isinstance(signature, str) and hmac.compare_digest(signature, expected)
 ```
 
 **Go example:**
@@ -220,7 +221,7 @@ Events are published via `XADD` with the following fields:
 | `instanceId` | Instance that produced the event |
 | `eventType` | Event type string |
 | `receivedAt` | RFC 3339 timestamp |
-| `eventData` | JSON string of the `data` payload only |
+| `eventData` | JSON string of the `eventData` payload only |
 | `signature` | HMAC-SHA256 signature (only when `signingSecret` is configured) |
 
 **Reading events:**
@@ -253,6 +254,12 @@ The publisher is selected based on `WSAPI_PUBLISH_VIA` (or `eventsPublishVia` in
 | `"webhook"` | Webhook (HTTP POST) | Noop if no webhook URL configured |
 | `"redis"` | Redis Streams (XADD) | Noop if Redis not configured |
 | `"none"` / empty | Noop (debug logging only) | — |
+
+## Ad attribution (unreleased)
+
+The next OSS release adds optional `eventData.adReferral` to message events, including messages inside history batches. This is included in the source changes but is **not part of the published 2.1.0 image**.
+
+It carries Click-to-WhatsApp attribution when WhatsApp supplies it: `ctwaClid`, source identifiers/URLs, title, body, media type, thumbnail URL, conversion source and attribution flag. Persist the click ID when received; later messages may omit it. Ordinary link previews without attribution are not reported as ad referrals. Raw thumbnails and opaque ad payloads are not included.
 
 ## Full Event Payload Schemas
 

@@ -26,7 +26,7 @@ cp config.example.yaml config.yaml
 server:
   port: 8080
   readTimeout: "30s"
-  writeTimeout: "60s"
+  writeTimeout: "90s"
   shutdownTimeout: "10s"
 
 database:
@@ -48,6 +48,8 @@ logging:
 
 httpProxy: ""                # HTTP proxy URL for outbound requests
 
+mediaMaxConcurrentDownloads: 2 # process-wide media download limit; 0 disables it
+
 instanceMode: "single"       # "single" or "multi"
 
 instanceDefaults:
@@ -55,6 +57,7 @@ instanceDefaults:
   webhookUrl: ""             # default webhook URL
   signingSecret: ""          # default HMAC signing secret
   eventFilters: []           # default event filters
+  publishEvents:            # false suppresses data events; unset means enabled
   historySync:               # default history sync (true/false)
 
 eventsPublishVia: "webhook"  # "webhook", "redis", or "none"
@@ -81,6 +84,14 @@ All variables are optional — defaults are used when not set.
 |----------|-------------|---------|
 | `WSAPI_PORT` | HTTP port | `8080` |
 | `WSAPI_INSTANCE_MODE` | Instance mode: `"single"` or `"multi"` | `single` |
+
+### Media
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `WSAPI_MEDIA_MAX_CONCURRENT_DOWNLOADS` | Process-wide concurrent media decrypt limit; `0` disables the limit | `2` |
+
+Each media download has a two-minute timeout. `instanceDefaults.publishEvents` and per-instance `publishEvents` suppress data events when false; system events still pass. This setting has no dedicated environment variable.
 
 ### Database
 

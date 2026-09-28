@@ -47,6 +47,7 @@ type MessageEvent struct {
 	Media               *MediaInfo      `json:"media,omitempty"`
 	Reaction            *ReactionInfo   `json:"reaction,omitempty"`
 	ReplyTo             *ReplyInfo      `json:"replyTo,omitempty"`
+	AdReferral          *AdReferral     `json:"adReferral,omitempty"`
 	Contact             string          `json:"contact,omitempty"`
 	ContactArray        []string        `json:"contactArray,omitempty"`
 	ExtendedText        *ExtendedText   `json:"extendedText,omitempty"`
@@ -85,6 +86,24 @@ type ReplyInfo struct {
 	Sender      *identity.Sender `json:"sender,omitempty"`
 	Text        string           `json:"text,omitempty"`
 	IsForwarded bool             `json:"isForwarded,omitempty"`
+}
+
+// AdReferral carries Click-to-WhatsApp (CTWA) ad attribution for the first
+// message a contact sends after clicking a Meta ad. Projected from
+// ContextInfo.ExternalAdReply; only present when the message actually carries
+// attribution data.
+type AdReferral struct {
+	CtwaClid          string `json:"ctwaClid,omitempty"`
+	SourceType        string `json:"sourceType,omitempty"`
+	SourceID          string `json:"sourceId,omitempty"`
+	SourceURL         string `json:"sourceUrl,omitempty"`
+	SourceApp         string `json:"sourceApp,omitempty"`
+	Title             string `json:"title,omitempty"`
+	Body              string `json:"body,omitempty"`
+	MediaType         string `json:"mediaType,omitempty"`
+	ThumbnailURL      string `json:"thumbnailUrl,omitempty"`
+	ConversionSource  string `json:"conversionSource,omitempty"`
+	ShowAdAttribution bool   `json:"showAdAttribution,omitempty"`
 }
 
 type ExtendedText struct {

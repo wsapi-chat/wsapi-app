@@ -5,7 +5,7 @@ A Go REST API for WhatsApp built on [whatsmeow](https://github.com/tulir/whatsme
 ## Features
 
 - **Multi-instance** — run multiple WhatsApp sessions in one process, each with its own credentials, webhook, and event filters
-- **Full REST API** — 74 endpoints covering messages, groups, communities, contacts, chats, newsletters, status updates, calls, and more
+- **Full REST API** — 108 operations covering messages, groups, communities, contacts, chats, newsletters, status updates, calls, and more
 - **Event delivery** — receive real-time events via webhook (HTTP POST with optional HMAC-SHA256 signing) or Redis Streams
 - **Flexible storage** — SQLite (zero-config) or PostgreSQL, single database for everything
 - **Docker ready** — single-container deployment, available on Docker Hub
@@ -15,11 +15,12 @@ A Go REST API for WhatsApp built on [whatsmeow](https://github.com/tulir/whatsme
 
 | Page | Description |
 |------|-------------|
+| [Upgrading](Upgrading) | Release changes, backups and rollback precautions |
 | [Getting Started](Getting-Started) | Installation, quick-start walkthrough |
 | [Instance Modes](Instance-Modes) | Single vs multi mode |
 | [Configuration](Configuration) | Config file, environment variables |
 | [Authentication](Authentication) | API key auth for admin and instance endpoints |
-| [API Overview](API-Overview) | All 74 endpoints grouped by domain |
+| [API Overview](API-Overview) | All 108 operations grouped by domain |
 | [Event Delivery](Event-Delivery) | Webhooks, Redis Streams, event types, filtering |
 | [Docker Deployment](Docker-Deployment) | Docker run, Compose, volumes, production tips |
 | [Database Setup](Database-Setup) | SQLite vs PostgreSQL, database schema |

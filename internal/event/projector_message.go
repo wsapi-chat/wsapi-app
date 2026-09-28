@@ -270,7 +270,7 @@ func projectImageMessage(m *waE2E.ImageMessage, result *MessageEvent, pctx *Proj
 	}
 
 	if m.ContextInfo != nil {
-		projectMediaContextInfo(m.ContextInfo, result, pctx)
+		projectContextInfo(m.ContextInfo, result, pctx)
 	}
 	if m.ViewOnce != nil && *m.ViewOnce {
 		result.ViewOnce = true
@@ -323,7 +323,7 @@ func projectVideoMessage(m *waE2E.VideoMessage, result *MessageEvent, pctx *Proj
 	}
 
 	if m.ContextInfo != nil {
-		projectMediaContextInfo(m.ContextInfo, result, pctx)
+		projectContextInfo(m.ContextInfo, result, pctx)
 	}
 	if m.ViewOnce != nil && *m.ViewOnce {
 		result.ViewOnce = true
@@ -373,7 +373,7 @@ func projectAudioMessage(m *waE2E.AudioMessage, result *MessageEvent, pctx *Proj
 	}
 
 	if m.ContextInfo != nil {
-		projectMediaContextInfo(m.ContextInfo, result, pctx)
+		projectContextInfo(m.ContextInfo, result, pctx)
 	}
 
 	result.Media = media
@@ -423,7 +423,7 @@ func projectDocumentMessage(m *waE2E.DocumentMessage, result *MessageEvent, pctx
 	}
 
 	if m.ContextInfo != nil {
-		projectMediaContextInfo(m.ContextInfo, result, pctx)
+		projectContextInfo(m.ContextInfo, result, pctx)
 	}
 
 	result.Media = media
@@ -464,20 +464,23 @@ func projectStickerMessage(m *waE2E.StickerMessage, result *MessageEvent, pctx *
 	}
 
 	if m.ContextInfo != nil {
-		projectMediaContextInfo(m.ContextInfo, result, pctx)
+		projectContextInfo(m.ContextInfo, result, pctx)
 	}
 
 	result.Media = media
 	result.Type = "media"
 }
 
-func projectMediaContextInfo(contextInfo *waE2E.ContextInfo, result *MessageEvent, pctx *ProjectorContext) {
+// projectContextInfo maps the parts of a whatsmeow ContextInfo that are shared by
+// every message type: forwarding, mentions, reply metadata, ephemeral expiration
+// and Click-to-WhatsApp ad attribution.
+func projectContextInfo(contextInfo *waE2E.ContextInfo, result *MessageEvent, pctx *ProjectorContext) {
 	if contextInfo == nil {
 		return
 	}
 
 	// Forwarded flag
-	if contextInfo.IsForwarded != nil && *contextInfo.IsForwarded {
+	if contextInfo.GetIsForwarded() {
 		result.IsForwarded = true
 	}
 
@@ -487,24 +490,24 @@ func projectMediaContextInfo(contextInfo *waE2E.ContextInfo, result *MessageEven
 	}
 
 	// Reply information
-	hasStanzaID := contextInfo.StanzaID != nil && *contextInfo.StanzaID != ""
-	hasParticipant := contextInfo.Participant != nil && *contextInfo.Participant != ""
+	hasStanzaID := contextInfo.GetStanzaID() != ""
+	hasParticipant := contextInfo.GetParticipant() != ""
 
 	if hasStanzaID || hasParticipant {
 		replyTo := &ReplyInfo{}
 
 		if hasStanzaID {
-			replyTo.ID = *contextInfo.StanzaID
+			replyTo.ID = contextInfo.GetStanzaID()
 		}
 
 		if hasParticipant {
-			if jid, err := waTypes.ParseJID(*contextInfo.Participant); err == nil {
+			if jid, err := waTypes.ParseJID(contextInfo.GetParticipant()); err == nil {
 				s := resolveSender(jid, false, waTypes.EmptyJID, pctx)
 				replyTo.Sender = &s
 			}
 		}
 
-		if contextInfo.IsForwarded != nil && *contextInfo.IsForwarded {
+		if contextInfo.GetIsForwarded() {
 			replyTo.IsForwarded = true
 		}
 
@@ -512,16 +515,70 @@ func projectMediaContextInfo(contextInfo *waE2E.ContextInfo, result *MessageEven
 		if quotedMsg := contextInfo.GetQuotedMessage(); quotedMsg != nil {
 			if quotedMsg.GetConversation() != "" {
 				replyTo.Text = quotedMsg.GetConversation()
-			} else if quotedMsg.GetExtendedTextMessage() != nil {
-				extText := quotedMsg.GetExtendedTextMessage()
-				if extText.Text != nil && *extText.Text != "" {
-					replyTo.Text = *extText.Text
-				}
+			} else if extText := quotedMsg.GetExtendedTextMessage(); extText.GetText() != "" {
+				replyTo.Text = extText.GetText()
 			}
 		}
 
 		result.ReplyTo = replyTo
 	}
+
+	// Ephemeral (disappearing message) expiration
+	if contextInfo.Expiration != nil {
+		result.EphemeralExpiration = GetEphemeralExpirationString(contextInfo.GetExpiration())
+	}
+
+	// Click-to-WhatsApp ad attribution
+	if referral := projectAdReferral(contextInfo); referral != nil {
+		result.AdReferral = referral
+	}
+}
+
+// projectAdReferral maps Click-to-WhatsApp ad attribution from a ContextInfo.
+//
+// Returns nil when the message carries no attribution data: externalAdReply is
+// also used for the rich link-preview cards businesses send, so a card without a
+// click ID, a source or an explicit attribution flag must not be reported as an
+// ad referral.
+func projectAdReferral(contextInfo *waE2E.ContextInfo) *AdReferral {
+	ad := contextInfo.GetExternalAdReply()
+	if ad == nil {
+		return nil
+	}
+
+	if ad.GetCtwaClid() == "" && ad.GetSourceID() == "" && ad.GetSourceURL() == "" &&
+		ad.GetSourceType() == "" && !ad.GetShowAdAttribution() {
+		return nil
+	}
+
+	referral := &AdReferral{
+		CtwaClid:          ad.GetCtwaClid(),
+		SourceType:        ad.GetSourceType(),
+		SourceID:          ad.GetSourceID(),
+		SourceURL:         ad.GetSourceURL(),
+		SourceApp:         ad.GetSourceApp(),
+		Title:             ad.GetTitle(),
+		Body:              ad.GetBody(),
+		ThumbnailURL:      ad.GetThumbnailURL(),
+		ShowAdAttribution: ad.GetShowAdAttribution(),
+	}
+
+	switch ad.GetMediaType() {
+	case waE2E.ContextInfo_ExternalAdReplyInfo_IMAGE:
+		referral.MediaType = "image"
+	case waE2E.ContextInfo_ExternalAdReplyInfo_VIDEO:
+		referral.MediaType = "video"
+	}
+
+	// entryPointConversionSource ("ctwa_ad") is the more specific of the two;
+	// conversionSource ("FB_Ads") is the older field and is not always set.
+	if source := contextInfo.GetEntryPointConversionSource(); source != "" {
+		referral.ConversionSource = source
+	} else {
+		referral.ConversionSource = contextInfo.GetConversionSource()
+	}
+
+	return referral
 }
 
 func projectReactionMessage(reactionMsg *waE2E.ReactionMessage, result *MessageEvent) {
@@ -595,58 +652,7 @@ func projectExtendedTextMessage(extMsg *waE2E.ExtendedTextMessage, result *Messa
 	}
 
 	// Context info for extended text message
-	if contextInfo := extMsg.ContextInfo; contextInfo != nil {
-		// Forwarded flag
-		if contextInfo.IsForwarded != nil && *contextInfo.IsForwarded {
-			result.IsForwarded = true
-		}
-
-		// Mentions
-		if len(contextInfo.MentionedJID) > 0 {
-			result.Mentions = resolveMentions(contextInfo.MentionedJID, pctx)
-		}
-
-		// Reply information
-		hasStanzaID := contextInfo.StanzaID != nil && *contextInfo.StanzaID != ""
-		hasParticipant := contextInfo.Participant != nil && *contextInfo.Participant != ""
-
-		if hasStanzaID || hasParticipant {
-			replyTo := &ReplyInfo{}
-
-			if hasStanzaID {
-				replyTo.ID = *contextInfo.StanzaID
-			}
-
-			if hasParticipant {
-				if jid, err := waTypes.ParseJID(*contextInfo.Participant); err == nil {
-					s := resolveSender(jid, false, waTypes.EmptyJID, pctx)
-					replyTo.Sender = &s
-				}
-			}
-
-			if contextInfo.IsForwarded != nil && *contextInfo.IsForwarded {
-				replyTo.IsForwarded = true
-			}
-
-			// Reply content
-			if quotedMsg := contextInfo.GetQuotedMessage(); quotedMsg != nil {
-				if quotedMsg.GetConversation() != "" {
-					replyTo.Text = quotedMsg.GetConversation()
-				} else if quotedMsg.GetExtendedTextMessage() != nil {
-					extText := quotedMsg.GetExtendedTextMessage()
-					if extText.Text != nil && *extText.Text != "" {
-						replyTo.Text = *extText.Text
-					}
-				}
-			}
-
-			result.ReplyTo = replyTo
-		}
-
-		if contextInfo.Expiration != nil {
-			result.EphemeralExpiration = GetEphemeralExpirationString(*contextInfo.Expiration)
-		}
-	}
+	projectContextInfo(extMsg.ContextInfo, result, pctx)
 }
 
 func projectEditMessage(protoMsg *waE2E.ProtocolMessage, result *MessageEvent) {

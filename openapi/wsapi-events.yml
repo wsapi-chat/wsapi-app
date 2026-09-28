@@ -1790,6 +1790,8 @@ components:
                   type: boolean
                 text:
                   type: string
+            adReferral:
+              $ref: "#/components/schemas/AdReferral"
             ephemeralExpiration:
               type: string
               enum:
@@ -2016,6 +2018,52 @@ components:
               description: Array of message event payloads
               items:
                 $ref: "#/components/schemas/MessageEventData"
+    AdReferral:
+      type: object
+      description: |
+        Click-to-WhatsApp (CTWA) ad attribution. Present on the first message a
+        contact sends after clicking a Meta ad that opens a chat with your number.
+        Only the first message of the conversation carries it, so persist
+        `ctwaClid` against the contact if you report conversions to Meta's
+        Conversions API. Fields are passed through unchanged from WhatsApp and any
+        of them may be absent.
+      properties:
+        ctwaClid:
+          type: string
+          description: Click identifier required by Meta's Conversions API (action_source=business_messaging)
+        sourceType:
+          type: string
+          description: What the contact clicked, e.g. `ad` or `post`
+        sourceId:
+          type: string
+          description: Identifier of the ad or post
+        sourceUrl:
+          type: string
+          description: URL of the ad or post
+        sourceApp:
+          type: string
+          description: Originating Meta app, e.g. `facebook` or `instagram`
+        title:
+          type: string
+          description: Headline of the ad as shown in the chat
+        body:
+          type: string
+          description: Body text of the ad as shown in the chat
+        mediaType:
+          type: string
+          enum:
+            - image
+            - video
+          description: Media type of the ad creative
+        thumbnailUrl:
+          type: string
+          description: URL of the ad creative thumbnail
+        conversionSource:
+          type: string
+          description: Entry point reported by WhatsApp, e.g. `ctwa_ad` or `FB_Ads`
+        showAdAttribution:
+          type: boolean
+          description: Whether WhatsApp displays the ad attribution banner on the message
     MessageEventData:
       type: object
       description: The eventData payload of a message event (used inside history sync arrays)
@@ -2122,6 +2170,8 @@ components:
               type: boolean
             text:
               type: string
+        adReferral:
+          $ref: "#/components/schemas/AdReferral"
         ephemeralExpiration:
           type: string
         isEdit:

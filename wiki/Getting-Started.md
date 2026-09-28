@@ -59,13 +59,15 @@ curl http://localhost:8080/session/status \
 # Returns: {"isConnected": true, "isLoggedIn": true, "deviceId": "..."}
 ```
 
+Phone numbers and JIDs in these examples are placeholders. Replace them with a real recipient in international format (country code, no leading zero).
+
 ### 3. Send a message
 
 ```bash
 curl -X POST http://localhost:8080/messages/text \
   -H "X-Api-Key: my-secret-key" \
   -H "Content-Type: application/json" \
-  -d '{"to": "1234567890", "text": "Hello from WSAPI!"}'
+  -d '{"to": "15551234567@s.whatsapp.net", "text": "Hello from WSAPI!"}'
 ```
 
 ## Quick Start (Multi Mode)
@@ -110,7 +112,7 @@ curl -X POST http://localhost:8080/messages/text \
   -H "X-Instance-Id: my-instance" \
   -H "X-Api-Key: my-instance-key" \
   -H "Content-Type: application/json" \
-  -d '{"to": "1234567890", "text": "Hello from WSAPI!"}'
+  -d '{"to": "15551234567@s.whatsapp.net", "text": "Hello from WSAPI!"}'
 ```
 
 ## Next Steps

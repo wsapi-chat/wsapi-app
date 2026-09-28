@@ -1,6 +1,6 @@
 # API Overview
 
-WSAPI exposes 74 REST API endpoints grouped by domain. Full request/response schemas are documented in the [OpenAPI spec](https://github.com/wsapi-chat/wsapi-app/blob/main/openapi/wsapi-api.yml). [![Swagger UI](https://img.shields.io/badge/Swagger_UI-85EA2D?logo=swagger&logoColor=black)](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/wsapi-chat/wsapi-app/main/openapi/wsapi-api.yml)
+WSAPI exposes 108 REST operations on 95 paths (101 WhatsApp, 6 admin and 1 health) grouped by domain. Full request/response schemas are documented in the [OpenAPI spec](https://github.com/wsapi-chat/wsapi-app/blob/main/openapi/wsapi-api.yml). [![Swagger UI](https://img.shields.io/badge/Swagger_UI-85EA2D?logo=swagger&logoColor=black)](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/wsapi-chat/wsapi-app/main/openapi/wsapi-api.yml)
 
 ## Health
 

@@ -64,7 +64,7 @@ Published **once** after the initial history sync completes (RECENT sync progres
   "instanceId": "my-instance",
   "eventType": "initial_sync_finished",
   "receivedAt": "2026-02-18T12:00:00Z",
-  "data": {}
+  "eventData": {}
 }
 ```
 
@@ -78,7 +78,7 @@ Published when history sync messages are flushed (via API) or received on-demand
   "instanceId": "my-instance",
   "eventType": "message_history_sync",
   "receivedAt": "2026-02-18T12:00:00Z",
-  "data": {
+  "eventData": {
     "chatId": "1234567890@s.whatsapp.net",
     "messages": [
       {
@@ -110,7 +110,7 @@ curl -X POST http://localhost:8080/session/flush-history \
   -H "X-Api-Key: my-secret-key"
 ```
 
-The endpoint returns `200 OK` immediately. Messages are published asynchronously — your webhook or Redis stream will receive `message_history_sync` events grouped by chat.
+The endpoint returns `202 Accepted` immediately. Messages are published asynchronously — your webhook or Redis stream will receive `message_history_sync` events grouped by chat.
 
 ### Request on-demand history for a specific chat
 
@@ -119,7 +119,9 @@ You can also request history for a specific chat at any time (the device must be
 ```bash
 curl -X POST http://localhost:8080/chats/1234567890@s.whatsapp.net/messages \
   -H "X-Instance-Id: my-instance" \
-  -H "X-Api-Key: my-secret-key"
+  -H "X-Api-Key: my-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{"lastMessageId":"ABCDEF1234567890","lastMessageSenderId":"1234567890@s.whatsapp.net","count":50}'
 ```
 
 This triggers an on-demand history sync from WhatsApp, which produces `message_history_sync` events directly (without caching).

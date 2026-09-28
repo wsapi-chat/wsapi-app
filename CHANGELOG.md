@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.0.0]
+
+Added optional Click-to-WhatsApp adReferral projection for text/media messages and event/history schemas, with tests. Shared context projection now also preserves media ephemeral expiration. Updated OSS wiki examples, configuration and upgrade guidance. Not included in the published 2.1.0 image.
+
 ## [2.1.0] - 2026-09-15
 
 ### Added

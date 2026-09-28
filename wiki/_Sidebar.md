@@ -19,6 +19,7 @@
 **Deployment**
 
 - [Docker Deployment](Docker-Deployment)
+- [Upgrading](Upgrading)
 
 **Resources**
 
