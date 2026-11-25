@@ -37,6 +37,7 @@ whatsmeow:
   logLevel: "warn"           # debug, info, warn, error
   pairClientType: "chrome"   # chrome, edge, firefox, opera, safari
   pairClientOs: "Windows"    # OS name shown in WhatsApp Linked Devices
+  sendTimeout: "20s"         # how long a send waits for WhatsApp's acknowledgement
 
 auth:
   adminApiKey: ""            # API key for /admin/instances
@@ -122,6 +123,7 @@ Each media download has a two-minute timeout. `instanceDefaults.publishEvents` a
 |----------|-------------|---------|
 | `WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE` | Pair client type (`chrome`, `edge`, `firefox`, `opera`, `safari`) | `chrome` |
 | `WSAPI_WHATSMEOW_PAIR_CLIENT_OS` | OS name shown in WhatsApp Linked Devices (`Windows`, `Linux`, `macOS`) | `Windows` |
+| `WSAPI_WHATSMEOW_SEND_TIMEOUT` | How long a send waits for WhatsApp's acknowledgement before failing | `20s` |
 
 ### Instance Defaults
 

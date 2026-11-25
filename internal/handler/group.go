@@ -43,7 +43,7 @@ func (h *GroupHandler) RegisterRoutes(r chi.Router) {
 
 type CreateGroupRequest struct {
 	Name         string   `json:"name" validate:"required"`
-	Participants []string `json:"participants" validate:"required,min=1"`
+	Participants []string `json:"participants"`
 }
 
 type UpdateParticipantsRequest struct {

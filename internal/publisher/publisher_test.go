@@ -91,3 +91,15 @@ func TestCreateReturnsNoopWhenWebhookURLMissing(t *testing.T) {
 		t.Fatalf("expected *NoopPublisher, got %T", pub)
 	}
 }
+
+func TestEventDataAttrLogsSizeInsteadOfLargePayload(t *testing.T) {
+	small := []byte(`{"a":1}`)
+	if a := eventDataAttr(small); a.Key != "eventData" {
+		t.Fatalf("small payload key = %q", a.Key)
+	}
+	large := make([]byte, maxLoggedEventData+1)
+	a := eventDataAttr(large)
+	if a.Key != "eventDataBytes" || a.Value.Int64() != int64(len(large)) {
+		t.Fatalf("large payload attr = %v", a)
+	}
+}

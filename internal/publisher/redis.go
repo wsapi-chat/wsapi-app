@@ -117,7 +117,7 @@ func (p *RedisPublisher) publish(ctx context.Context, evt event.Event, instanceI
 		"eventId", evt.EventID,
 		"instanceId", instanceID,
 		"signed", signingSecret != "",
-		"eventData", json.RawMessage(dataJSON),
+		eventDataAttr(dataJSON),
 	)
 
 	streamName := p.streamName

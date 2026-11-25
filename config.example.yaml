@@ -15,6 +15,7 @@ whatsmeow:
   pairClientType: "chrome" # chrome, edge, firefox, opera, safari (env: WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE)
   pairClientOs: "Windows" # Windows, Linux, macOS (env: WSAPI_WHATSMEOW_PAIR_CLIENT_OS)
   maxParallelRetryReceipts: 0 # Per-instance cap on concurrent Signal retry-receipt handlers; 0 = unlimited (env: WSAPI_WHATSMEOW_MAX_PARALLEL_RETRY_RECEIPTS)
+  sendTimeout: "20s" # How long a send waits for WhatsApp's acknowledgement (env: WSAPI_WHATSMEOW_SEND_TIMEOUT)
 
 auth:
   adminApiKey: "" # API key for /admin/instances management, sent via X-Api-Key header (env: WSAPI_ADMIN_API_KEY)

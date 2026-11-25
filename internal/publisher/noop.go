@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	"github.com/wsapi-chat/wsapi-app/internal/event"
@@ -16,11 +17,15 @@ func NewNoopPublisher(logger *slog.Logger) *NoopPublisher {
 	return &NoopPublisher{logger: logger.With("publisher", "noop")}
 }
 
-func (p *NoopPublisher) Publish(_ context.Context, evt event.Event) error {
+func (p *NoopPublisher) Publish(ctx context.Context, evt event.Event) error {
+	if !p.logger.Enabled(ctx, slog.LevelDebug) {
+		return nil
+	}
+	data, _ := json.Marshal(evt.Data)
 	p.logger.Debug("event discarded (no publisher configured)",
 		"eventType", evt.EventType,
 		"eventId", evt.EventID,
-		"eventData", evt.Data,
+		eventDataAttr(data),
 	)
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store"
@@ -41,7 +42,7 @@ type Service struct {
 // mediaDownloadSlots, when non-nil, is a process-wide channel shared by every
 // Service to cap the number of concurrent /media/download operations. Pass nil
 // to leave concurrency unbounded.
-func NewService(ctx context.Context, container *sqlstore.Container, deviceID string, logger, waLogger *slog.Logger, chatStore *ChatStore, contactStore *ContactStore, historySyncStore *HistorySyncStore, maxMediaFileSize int64, mediaDownloadSlots chan struct{}) (*Service, error) {
+func NewService(ctx context.Context, container *sqlstore.Container, deviceID string, logger, waLogger *slog.Logger, chatStore *ChatStore, contactStore *ContactStore, historySyncStore *HistorySyncStore, maxMediaFileSize int64, mediaDownloadSlots chan struct{}, sendTimeout time.Duration) (*Service, error) {
 	var deviceStore *store.Device
 
 	if deviceID != "" {
@@ -71,15 +72,18 @@ func NewService(ctx context.Context, container *sqlstore.Container, deviceID str
 		logger:    logger,
 	}
 
-	svc.Messages = &MessageService{client: waClient, logger: logger}
+	svc.Messages = &MessageService{client: waClient, logger: logger, sendTimeout: sendTimeout}
 	svc.Groups = &GroupService{client: waClient, logger: logger}
 	svc.Communities = &CommunityService{client: waClient, logger: logger}
 	svc.Contacts = &ContactService{client: waClient, logger: logger, contactStore: contactStore}
-	svc.Chats = &ChatService{client: waClient, logger: logger, chatStore: chatStore}
+	svc.Chats = &ChatService{client: waClient, logger: logger, chatStore: chatStore, queryTimeout: sendTimeout}
 	svc.Account = &UserMeService{client: waClient, logger: logger}
 	svc.Users = &UserService{client: waClient, logger: logger}
 	svc.Media = &MediaService{dl: waClient, logger: logger, maxFileSize: maxMediaFileSize, slots: mediaDownloadSlots}
 	svc.Session = &SessionService{client: waClient, logger: logger}
+	// Passkey pairing state is tracked from the client's own event stream so
+	// it works for QR and pair-code pairings alike.
+	waClient.AddEventHandler(svc.Session.handlePasskeyEvent)
 	svc.Calls = &CallService{client: waClient, logger: logger}
 	svc.Newsletters = &NewsletterService{client: waClient, logger: logger}
 	svc.Status = &StatusService{client: waClient, logger: logger}

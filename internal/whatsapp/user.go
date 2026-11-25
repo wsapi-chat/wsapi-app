@@ -19,6 +19,7 @@ type UserInfo struct {
 	PictureID    string `json:"pictureId"`
 	PictureURL   string `json:"pictureUrl,omitempty"`
 	IsVerified   bool   `json:"isVerified"`
+	VerifiedName string `json:"verifiedName,omitempty"`
 }
 
 // BulkCheckResult is the domain response type for a bulk WhatsApp check.
@@ -66,6 +67,9 @@ func (u *UserService) GetUserInfo(ctx context.Context, phone string) (*UserInfo,
 		Status:       userDetails.Status,
 		PictureID:    userDetails.PictureID,
 		IsVerified:   userDetails.VerifiedName != nil,
+	}
+	if vn := userDetails.VerifiedName; vn != nil && vn.Details != nil {
+		info.VerifiedName = vn.Details.GetVerifiedName()
 	}
 
 	// Fetch profile picture URL.

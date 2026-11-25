@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -36,6 +37,10 @@ func (h *SessionHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/qr/text", h.QRText)
 		r.Get("/pair-code/{phone}", h.PairCode)
 		r.Get("/status", h.Status)
+		r.Get("/passkey", h.PasskeyState)
+		r.Post("/passkey", h.SubmitPasskey)
+		r.Post("/passkey/request", h.RequestPasskey)
+		r.Post("/passkey/confirm", h.ConfirmPasskey)
 		r.Post("/logout", h.Logout)
 		r.Post("/flush-history", h.FlushHistory)
 	})
@@ -90,7 +95,67 @@ func (h *SessionHandler) Status(w http.ResponseWriter, r *http.Request) {
 		"isConnected": inst.Service.IsConnected(),
 		"isLoggedIn":  inst.Service.IsLoggedIn(),
 		"deviceId":    inst.Service.GetDeviceJID(),
+		// Lets pollers notice a pending passkey step without a second call.
+		"passkeyStatus": inst.Service.Session.PasskeyState().Status,
 	})
+}
+
+// maxPasskeyResponseBytes caps the assertion body. A real one is ~1-2 KB.
+const maxPasskeyResponseBytes = 64 << 10
+
+// PasskeyState returns the pending passkey pairing step, if any. While the
+// status is "required" the response carries the WebAuthn challenge to sign on
+// https://web.whatsapp.com.
+func (h *SessionHandler) PasskeyState(w http.ResponseWriter, r *http.Request) {
+	inst := h.Instance(r)
+	h.JSON(w, http.StatusOK, inst.Service.Session.PasskeyState())
+}
+
+// SubmitPasskey forwards the browser's WebAuthn assertion (the JSON from
+// PublicKeyCredential.toJSON()) to WhatsApp.
+func (h *SessionHandler) SubmitPasskey(w http.ResponseWriter, r *http.Request) {
+	inst := h.Instance(r)
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxPasskeyResponseBytes+1))
+	if err != nil {
+		h.Error(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+	if len(body) > maxPasskeyResponseBytes {
+		h.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	state, err := inst.Service.Session.SubmitPasskeyResponse(r.Context(), body)
+	if err != nil {
+		h.ServiceError(w, err)
+		return
+	}
+	h.JSON(w, http.StatusOK, state)
+}
+
+// RequestPasskey asks WhatsApp for a passkey challenge on the live pairing
+// connection, for when its notification doesn't arrive on its own.
+func (h *SessionHandler) RequestPasskey(w http.ResponseWriter, r *http.Request) {
+	inst := h.Instance(r)
+	state, err := inst.Service.Session.RequestPasskey(r.Context())
+	if err != nil {
+		h.ServiceError(w, err)
+		return
+	}
+	h.JSON(w, http.StatusOK, state)
+}
+
+// ConfirmPasskey finishes a passkey pairing after the user checked that the
+// confirmation code matches the one on their phone.
+func (h *SessionHandler) ConfirmPasskey(w http.ResponseWriter, r *http.Request) {
+	inst := h.Instance(r)
+
+	if err := inst.Service.Session.ConfirmPasskey(r.Context()); err != nil {
+		h.ServiceError(w, err)
+		return
+	}
+	h.NoContent(w)
 }
 
 func (h *SessionHandler) Logout(w http.ResponseWriter, r *http.Request) {

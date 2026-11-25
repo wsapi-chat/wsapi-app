@@ -37,8 +37,22 @@ type MediaSendOptions struct {
 
 // MessageService wraps the whatsmeow client for message operations.
 type MessageService struct {
-	client *whatsmeow.Client
-	logger *slog.Logger
+	client      *whatsmeow.Client
+	logger      *slog.Logger
+	sendTimeout time.Duration
+}
+
+// send bounds every outgoing message on one deadline. whatsmeow honours the
+// caller's context (request.go sendIQ selects on ctx.Done), so this replaces
+// its 75s fallback with a limit the callers above can actually wait out.
+// A caller that already set a shorter deadline keeps it.
+func (m *MessageService) send(ctx context.Context, to waTypes.JID, msg *waE2E.Message) (whatsmeow.SendResponse, error) {
+	if m.sendTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, m.sendTimeout)
+		defer cancel()
+	}
+	return m.client.SendMessage(ctx, to, msg)
 }
 
 // SendText sends a text message to the specified recipient.
@@ -61,7 +75,7 @@ func (m *MessageService) SendText(ctx context.Context, to, text string, opts Sen
 		}
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +99,7 @@ func (m *MessageService) SendLink(ctx context.Context, to, text, url, title, des
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -118,7 +132,7 @@ func (m *MessageService) SendImage(ctx context.Context, to string, data []byte, 
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -151,7 +165,7 @@ func (m *MessageService) SendVideo(ctx context.Context, to string, data []byte, 
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -183,7 +197,7 @@ func (m *MessageService) SendAudio(ctx context.Context, to string, data []byte, 
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -216,7 +230,7 @@ func (m *MessageService) SendVoice(ctx context.Context, to string, data []byte, 
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -250,7 +264,7 @@ func (m *MessageService) SendDocument(ctx context.Context, to string, data []byt
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -282,7 +296,7 @@ func (m *MessageService) SendSticker(ctx context.Context, to string, data []byte
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -303,7 +317,7 @@ func (m *MessageService) SendContact(ctx context.Context, to, displayName, vcard
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -321,7 +335,7 @@ func (m *MessageService) SendReaction(ctx context.Context, to, senderID, message
 
 	reactionMsg := m.client.BuildReaction(chatJID, senderJID, messageID, reaction)
 
-	resp, err := m.client.SendMessage(ctx, chatJID, reactionMsg)
+	resp, err := m.send(ctx, chatJID, reactionMsg)
 	if err != nil {
 		return "", err
 	}
@@ -349,7 +363,7 @@ func (m *MessageService) SendLocation(ctx context.Context, to string, lat, lng f
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, msg)
+	resp, err := m.send(ctx, chatJID, msg)
 	if err != nil {
 		return "", err
 	}
@@ -389,7 +403,7 @@ func (m *MessageService) EditMessage(ctx context.Context, to, messageID, text st
 		},
 	}
 
-	resp, err := m.client.SendMessage(ctx, chatJID, editMsg)
+	resp, err := m.send(ctx, chatJID, editMsg)
 	if err != nil {
 		return "", err
 	}
@@ -406,7 +420,7 @@ func (m *MessageService) DeleteMessage(ctx context.Context, chatID, senderID, me
 
 	msg := m.client.BuildRevoke(chatJID, senderJID, messageID)
 
-	_, err = m.client.SendMessage(ctx, chatJID, msg)
+	_, err = m.send(ctx, chatJID, msg)
 	return err
 }
 
@@ -506,7 +520,7 @@ func (m *MessageService) PinMessage(ctx context.Context, chatID, senderID, messa
 		},
 	}
 
-	_, err = m.client.SendMessage(ctx, chatJID, msg)
+	_, err = m.send(ctx, chatJID, msg)
 	return err
 }
 

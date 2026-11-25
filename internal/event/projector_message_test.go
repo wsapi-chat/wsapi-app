@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"go.mau.fi/whatsmeow"
 	waE2E "go.mau.fi/whatsmeow/proto/waE2E"
+	"go.mau.fi/whatsmeow/store"
 	waTypes "go.mau.fi/whatsmeow/types"
 	waEvents "go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
@@ -12,7 +14,7 @@ import (
 
 // newMessageEvent builds a minimal inbound whatsmeow Message event carrying msg.
 func newMessageEvent(msg *waE2E.Message) *waEvents.Message {
-	chat, _ := waTypes.ParseJID("5491100000000@s.whatsapp.net")
+	chat, _ := waTypes.ParseJID("15550000000@s.whatsapp.net")
 	return &waEvents.Message{
 		Info: waTypes.MessageInfo{
 			ID:        "3EB0ABC123",
@@ -175,7 +177,7 @@ func TestProjectMessage_ContextInfoStillProjectsReplyAndMentions(t *testing.T) {
 				Text: proto.String("dale"),
 				ContextInfo: &waE2E.ContextInfo{
 					StanzaID:     proto.String("3EB0PREV"),
-					Participant:  proto.String("5491100000000@s.whatsapp.net"),
+					Participant:  proto.String("15550000000@s.whatsapp.net"),
 					MentionedJID: []string{"5491122222222@s.whatsapp.net"},
 					IsForwarded:  proto.Bool(true),
 					Expiration:   proto.Uint32(7 * 24 * 60 * 60),
@@ -195,7 +197,7 @@ func TestProjectMessage_ContextInfoStillProjectsReplyAndMentions(t *testing.T) {
 		if result.ReplyTo.Text != "vamos?" {
 			t.Errorf("replyTo.text = %q", result.ReplyTo.Text)
 		}
-		if result.ReplyTo.Sender == nil || result.ReplyTo.Sender.Phone != "5491100000000" {
+		if result.ReplyTo.Sender == nil || result.ReplyTo.Sender.Phone != "15550000000" {
 			t.Errorf("replyTo.sender = %+v", result.ReplyTo.Sender)
 		}
 		if !result.ReplyTo.IsForwarded || !result.IsForwarded {
@@ -216,7 +218,7 @@ func TestProjectMessage_ContextInfoStillProjectsReplyAndMentions(t *testing.T) {
 				Caption:  proto.String("mira"),
 				ContextInfo: &waE2E.ContextInfo{
 					StanzaID:     proto.String("3EB0PREV"),
-					Participant:  proto.String("5491100000000@s.whatsapp.net"),
+					Participant:  proto.String("15550000000@s.whatsapp.net"),
 					MentionedJID: []string{"5491122222222@s.whatsapp.net"},
 					Expiration:   proto.Uint32(24 * 60 * 60),
 				},
@@ -234,4 +236,59 @@ func TestProjectMessage_ContextInfoStillProjectsReplyAndMentions(t *testing.T) {
 			t.Errorf("ephemeralExpiration = %q", result.EphemeralExpiration)
 		}
 	})
+}
+
+// ownContext is a projector context for an account paired as 15550000001,
+// whose LID is 114453026750632.
+func ownContext() *ProjectorContext {
+	pn := waTypes.NewJID("15550000001", waTypes.DefaultUserServer)
+	return &ProjectorContext{Client: &whatsmeow.Client{Store: &store.Device{
+		ID:  &pn,
+		LID: waTypes.NewJID("114453026750632", waTypes.HiddenUserServer),
+	}}}
+}
+
+func projectReplyTo(t *testing.T, participant string, pctx *ProjectorContext) *ReplyInfo {
+	t.Helper()
+	_, data, publish := ProjectMessage(newMessageEvent(&waE2E.Message{
+		ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+			Text: proto.String("reply"),
+			ContextInfo: &waE2E.ContextInfo{
+				StanzaID:    proto.String("3EB0QUOTED"),
+				Participant: proto.String(participant),
+			},
+		},
+	}), pctx)
+	if !publish {
+		t.Fatal("expected message to be published")
+	}
+	replyTo := data.(MessageEvent).ReplyTo
+	if replyTo == nil || replyTo.Sender == nil {
+		t.Fatalf("expected replyTo with a sender, got %+v", replyTo)
+	}
+	return replyTo
+}
+
+func TestProjectMessage_ReplyToOwnMessageIsMe(t *testing.T) {
+	cases := []struct {
+		participant string
+		isMe        bool
+	}{
+		{"15550000001@s.whatsapp.net", true}, // own phone number
+		{"15550000001:12@s.whatsapp.net", true},
+		{"114453026750632@lid", true}, // own LID, as phones send it
+		{"15550000000@s.whatsapp.net", false},
+		{"32590429978877@lid", false},
+	}
+	for _, c := range cases {
+		if got := projectReplyTo(t, c.participant, ownContext()).Sender.IsMe; got != c.isMe {
+			t.Errorf("participant %s: isMe=%v, want %v", c.participant, got, c.isMe)
+		}
+	}
+}
+
+func TestProjectMessage_ReplyToWithoutClientIsNotMe(t *testing.T) {
+	if projectReplyTo(t, "15550000001@s.whatsapp.net", nil).Sender.IsMe {
+		t.Error("without a client the quoted sender cannot be known to be us")
+	}
 }

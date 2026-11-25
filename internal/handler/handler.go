@@ -108,6 +108,9 @@ func (h *Handler) serviceStatus(err error) int {
 		// the default 400 branch: a 400 tells the caller their request was
 		// malformed and stops well-behaved clients from retrying.
 		return http.StatusGatewayTimeout
+	case errors.Is(err, whatsapp.ErrPasskeyPending), errors.Is(err, whatsapp.ErrNoPasskeyPending),
+		errors.Is(err, whatsapp.ErrPasskeyNotConnected):
+		return http.StatusConflict
 	case errors.Is(err, context.Canceled):
 		return statusClientClosedRequest
 	default:

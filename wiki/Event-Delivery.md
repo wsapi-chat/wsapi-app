@@ -255,9 +255,9 @@ The publisher is selected based on `WSAPI_PUBLISH_VIA` (or `eventsPublishVia` in
 | `"redis"` | Redis Streams (XADD) | Noop if Redis not configured |
 | `"none"` / empty | Noop (debug logging only) | — |
 
-## Ad attribution (unreleased)
+## Ad attribution
 
-The next OSS release adds optional `eventData.adReferral` to message events, including messages inside history batches. This is included in the source changes but is **not part of the published 2.1.0 image**.
+Since 3.0.0, message events carry an optional `eventData.adReferral`, including messages inside history batches.
 
 It carries Click-to-WhatsApp attribution when WhatsApp supplies it: `ctwaClid`, source identifiers/URLs, title, body, media type, thumbnail URL, conversion source and attribution flag. Persist the click ID when received; later messages may omit it. Ordinary link previews without attribution are not reported as ad referrals. Raw thumbnails and opaque ad payloads are not included.
 

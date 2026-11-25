@@ -171,6 +171,11 @@ func ProjectMessageDeleteForMe(evt *waEvents.DeleteForMe, pctx *ProjectorContext
 		return TypeMessageDelete, nil, false
 	}
 
+	// Discard full-sync events: an app state full sync replays every past deletion
+	if evt.FromFullSync {
+		return TypeMessageDelete, nil, false
+	}
+
 	data := MessageDeleteEvent{
 		ID:             evt.MessageID,
 		ChatID:         projectChatID(evt.ChatJID, pctx),
@@ -189,6 +194,11 @@ func ProjectMessageDeleteForMe(evt *waEvents.DeleteForMe, pctx *ProjectorContext
 // ProjectStar converts a whatsmeow Star event into a MessageStarEvent.
 func ProjectStar(evt *waEvents.Star, pctx *ProjectorContext) (string, any, bool) {
 	if evt == nil {
+		return TypeMessageStar, nil, false
+	}
+
+	// Discard full-sync events
+	if evt.FromFullSync {
 		return TypeMessageStar, nil, false
 	}
 
@@ -502,7 +512,7 @@ func projectContextInfo(contextInfo *waE2E.ContextInfo, result *MessageEvent, pc
 
 		if hasParticipant {
 			if jid, err := waTypes.ParseJID(contextInfo.GetParticipant()); err == nil {
-				s := resolveSender(jid, false, waTypes.EmptyJID, pctx)
+				s := resolveSender(jid, pctx.IsOwnJID(jid), waTypes.EmptyJID, pctx)
 				replyTo.Sender = &s
 			}
 		}
