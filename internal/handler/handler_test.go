@@ -9,6 +9,7 @@ import (
 
 	"go.mau.fi/whatsmeow"
 
+	"github.com/wsapi-chat/wsapi-app/internal/httputil"
 	"github.com/wsapi-chat/wsapi-app/internal/whatsapp"
 )
 
@@ -27,6 +28,8 @@ func TestServiceStatus(t *testing.T) {
 		{context.DeadlineExceeded, http.StatusGatewayTimeout, "context deadline"},
 		{context.Canceled, statusClientClosedRequest, "caller went away"},
 		{errors.New("some other failure"), http.StatusBadRequest, "unclassified falls back to 400"},
+		{httputil.ErrPrivateAddress, http.StatusBadRequest, "media url to an internal address"},
+		{httputil.ErrUnsupportedScheme, http.StatusBadRequest, "media url with a non-http scheme"},
 
 		// The case that motivated this. whatsmeow.ErrMessageTimedOut is a bare
 		// errors.New: it satisfies none of the timeout sentinels above, so it

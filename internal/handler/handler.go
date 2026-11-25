@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/wsapi-chat/wsapi-app/internal/httputil"
 	"github.com/wsapi-chat/wsapi-app/internal/instance"
 	"github.com/wsapi-chat/wsapi-app/internal/server/middleware"
 	"github.com/wsapi-chat/wsapi-app/internal/validate"
@@ -94,6 +95,9 @@ func (h *Handler) ServiceError(w http.ResponseWriter, err error) {
 // the mapping can be tested without an http.ResponseWriter.
 func (h *Handler) serviceStatus(err error) int {
 	switch {
+	case errors.Is(err, httputil.ErrPrivateAddress), errors.Is(err, httputil.ErrUnsupportedScheme):
+		// Rejected media URL: the caller's input, never retryable.
+		return http.StatusBadRequest
 	case errors.Is(err, whatsapp.ErrNotFound):
 		return http.StatusNotFound
 	case errors.Is(err, whatsapp.ErrUpstream):

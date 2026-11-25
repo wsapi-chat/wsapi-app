@@ -48,6 +48,11 @@ func main() {
 		logger.Info("HTTP proxy configured", "proxy", cfg.HTTPProxy)
 	}
 
+	whatsapp.SetAllowPrivateMediaURLs(cfg.MediaAllowPrivateURLs)
+	if cfg.MediaAllowPrivateURLs {
+		logger.Warn("media URL downloads may reach private and internal addresses (WSAPI_MEDIA_ALLOW_PRIVATE_URLS)")
+	}
+
 	// Initialize validator
 	validate.Init()
 
