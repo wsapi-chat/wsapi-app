@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-25
+
 ### Changed
 
 - **Media URLs can no longer reach private or internal addresses (behavior change).** The `url` field of `POST /messages/{image,video,audio,voice,document,sticker}` and `POST /status/{image,video}` is rejected with `400 url resolves to a private or internal address` when it resolves to a loopback, private (RFC 1918, `fc00::/7`), link-local (including `169.254.169.254`), CGNAT (`100.64.0.0/10`), unspecified or multicast address. The check runs on the resolved IP for every redirect. Only `http` and `https` URLs are accepted. Setups that send media from a server on their own network can restore the previous behavior with `WSAPI_MEDIA_ALLOW_PRIVATE_URLS=true` (`mediaAllowPrivateUrls`); a warning is logged at startup when it is enabled
