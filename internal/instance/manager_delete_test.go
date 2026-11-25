@@ -153,3 +153,39 @@ func TestFailedDeleteClearsDeletingMarker(t *testing.T) {
 		t.Fatalf("retry must attempt the delete again, got %v", err)
 	}
 }
+
+// A caller that gives up must not abort a delete halfway: that leaves the row
+// and the map entry behind with the publisher already closed. An already
+// cancelled context is the extreme case of a caller's short timeout.
+func TestDeleteInstanceCompletesWhenCallerCancels(t *testing.T) {
+	m, store := newDeleteTestManager(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := store.SaveInstance(context.Background(), whatsapp.InstanceRecord{ID: "ins_cut"}); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	m.instances["ins_cut"] = &Instance{ID: "ins_cut", Logger: m.logger}
+
+	if err := m.DeleteInstance(ctx, "ins_cut"); err != nil {
+		t.Fatalf("DeleteInstance with cancelled caller: %v", err)
+	}
+	if _, ok := m.instances["ins_cut"]; ok {
+		t.Fatal("map entry survived the delete")
+	}
+	if _, err := store.GetInstance(context.Background(), "ins_cut"); err == nil {
+		t.Fatal("row survived the delete")
+	}
+}
+
+// A retry that lands while the first delete is still running must be told so
+// distinctly, not with the generic not-found the handler used to return.
+func TestDeleteInstanceReportsInProgress(t *testing.T) {
+	m, _ := newDeleteTestManager(t)
+	m.instances["ins_busy"] = &Instance{ID: "ins_busy", Logger: m.logger, deleting: true}
+
+	err := m.DeleteInstance(context.Background(), "ins_busy")
+	if !errors.Is(err, ErrDeleteInProgress) {
+		t.Fatalf("expected ErrDeleteInProgress, got %v", err)
+	}
+}

@@ -43,7 +43,7 @@ func (p *WebhookPublisher) Publish(ctx context.Context, evt event.Event) error {
 		"eventType", evt.EventType,
 		"eventId", evt.EventID,
 		"signed", p.signingSecret != "",
-		"eventData", json.RawMessage(body),
+		eventDataAttr(body),
 	)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.url, bytes.NewReader(body))

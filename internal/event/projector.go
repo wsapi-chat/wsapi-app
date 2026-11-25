@@ -3,6 +3,7 @@ package event
 import (
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store"
+	waTypes "go.mau.fi/whatsmeow/types"
 	waEvents "go.mau.fi/whatsmeow/types/events"
 )
 
@@ -18,6 +19,23 @@ func (pctx *ProjectorContext) LIDs() store.LIDStore {
 		return pctx.Client.Store.LIDs
 	}
 	return nil
+}
+
+// IsOwnJID reports whether jid is the paired account itself, by phone number
+// or by LID. Only the bare user is compared, so any device of the account
+// matches. Quoted participants arrive as either form.
+func (pctx *ProjectorContext) IsOwnJID(jid waTypes.JID) bool {
+	if pctx == nil || pctx.Client == nil || pctx.Client.Store == nil || jid.User == "" {
+		return false
+	}
+	st := pctx.Client.Store
+	switch jid.Server {
+	case waTypes.DefaultUserServer:
+		return st.ID != nil && st.ID.User == jid.User
+	case waTypes.HiddenUserServer:
+		return st.LID.User == jid.User
+	}
+	return false
 }
 
 // Project takes a raw whatsmeow event and returns a typed Event envelope.

@@ -55,10 +55,6 @@ func (g *GroupService) CreateGroup(ctx context.Context, name string, participant
 	if name == "" {
 		return "", fmt.Errorf("group name cannot be empty")
 	}
-	if len(participants) == 0 {
-		return "", fmt.Errorf("at least one participant is required")
-	}
-
 	waJIDs := make([]waTypes.JID, 0, len(participants))
 	for _, p := range participants {
 		if p == "" {

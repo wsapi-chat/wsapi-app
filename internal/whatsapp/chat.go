@@ -69,9 +69,10 @@ type ChatListItem struct {
 
 // ChatService wraps the whatsmeow client for chat operations.
 type ChatService struct {
-	client    *whatsmeow.Client
-	logger    *slog.Logger
-	chatStore *ChatStore
+	client       *whatsmeow.Client
+	logger       *slog.Logger
+	chatStore    *ChatStore
+	queryTimeout time.Duration
 }
 
 func (c *ChatService) getOurJID() string {
@@ -117,6 +118,14 @@ func (c *ChatService) GetChatPicture(ctx context.Context, chatID string) (ChatPi
 	jid, err := parseJID(chatID)
 	if err != nil {
 		return ChatPictureResponse{}, fmt.Errorf("invalid JID: %w", err)
+	}
+
+	// Same bound as sends: a JID that belongs to nobody is never answered, and
+	// without a deadline whatsmeow waits its 75s fallback.
+	if c.queryTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.queryTimeout)
+		defer cancel()
 	}
 
 	picture, err := c.client.GetProfilePictureInfo(ctx, jid, nil)

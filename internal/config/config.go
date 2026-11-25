@@ -75,6 +75,22 @@ type WhatsmeowConfig struct {
 	PairClientType           string `yaml:"pairClientType"`
 	PairClientOS             string `yaml:"pairClientOs"`
 	MaxParallelRetryReceipts int    `yaml:"maxParallelRetryReceipts"`
+	SendTimeout              string `yaml:"sendTimeout"`
+}
+
+// How long to wait for WhatsApp to acknowledge a send before giving up.
+//
+// Without a deadline whatsmeow falls back to its own 75s, which is far past
+// every caller above: a recipient that cannot exist is accepted by WhatsApp,
+// never acknowledged, and the request is cut somewhere upstream with nothing
+// naming the fault. Observed successful sends finish well under 10s, so 20s
+// is more than twice the real tail and still leaves room for the error to travel back before anything upstream gives up.
+func (w WhatsmeowConfig) SendTimeoutDuration() time.Duration {
+	d, _ := time.ParseDuration(w.SendTimeout)
+	if d == 0 {
+		return 20 * time.Second
+	}
+	return d
 }
 
 type AuthConfig struct {
@@ -138,6 +154,7 @@ func defaults() *Config {
 		},
 		Whatsmeow: WhatsmeowConfig{
 			LogLevel:       "warn",
+			SendTimeout:    "20s",
 			PairClientType: "chrome",
 			PairClientOS:   "Windows",
 		},
@@ -189,6 +206,7 @@ func applyEnv(cfg *Config) {
 	setIfEnv(&cfg.Whatsmeow.LogLevel, "WSAPI_WHATSMEOW_LOG_LEVEL")
 	setIfEnv(&cfg.Whatsmeow.PairClientType, "WSAPI_WHATSMEOW_PAIR_CLIENT_TYPE")
 	setIfEnv(&cfg.Whatsmeow.PairClientOS, "WSAPI_WHATSMEOW_PAIR_CLIENT_OS")
+	setIfEnv(&cfg.Whatsmeow.SendTimeout, "WSAPI_WHATSMEOW_SEND_TIMEOUT")
 	if v := os.Getenv("WSAPI_WHATSMEOW_MAX_PARALLEL_RETRY_RECEIPTS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.Whatsmeow.MaxParallelRetryReceipts = n

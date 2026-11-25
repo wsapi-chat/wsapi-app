@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -115,7 +116,11 @@ func (h *InstanceHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *InstanceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.mgr.DeleteInstance(r.Context(), id); err != nil {
-		h.Error(w, err.Error(), http.StatusNotFound)
+		status := http.StatusNotFound
+		if errors.Is(err, instance.ErrDeleteInProgress) {
+			status = http.StatusConflict
+		}
+		h.Error(w, err.Error(), status)
 		return
 	}
 	h.NoContent(w)

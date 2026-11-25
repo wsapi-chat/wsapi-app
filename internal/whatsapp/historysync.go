@@ -44,21 +44,16 @@ func (s *HistorySyncService) FlushHistory(ctx context.Context, pub publisher.Pub
 	s.logger.Info("flush history: starting", "chats", len(chats))
 
 	for _, chatJID := range chats {
-		jsonArrays, err := s.store.GetMessages(ctx, ourJID, chatJID)
-		if err != nil {
-			s.logger.Error("flush history: get messages", "chatJid", chatJID, "error", err)
-			continue
-		}
-
-		// Deserialize all JSON arrays and collect messages with deduplication.
+		// Rows are streamed and published in chunks, so memory stays bounded by one
+		// row plus one chunk regardless of how large the cached backlog is.
 		seen := make(map[string]struct{})
 		var buffer []event.MessageEvent
 
-		for _, jsonStr := range jsonArrays {
+		err := s.store.ForEachMessages(ctx, ourJID, chatJID, func(jsonStr string) error {
 			var msgs []event.MessageEvent
 			if err := json.Unmarshal([]byte(jsonStr), &msgs); err != nil {
 				s.logger.Error("flush history: unmarshal messages", "chatJid", chatJID, "error", err)
-				continue
+				return nil
 			}
 
 			for _, msg := range msgs {
@@ -73,6 +68,10 @@ func (s *HistorySyncService) FlushHistory(ctx context.Context, pub publisher.Pub
 					buffer = nil
 				}
 			}
+			return nil
+		})
+		if err != nil {
+			s.logger.Error("flush history: get messages", "chatJid", chatJID, "error", err)
 		}
 
 		// Publish remaining messages for this chat.

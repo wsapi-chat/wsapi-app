@@ -28,7 +28,11 @@ Requires `X-Api-Key` header with the admin API key.
 | GET | `/session/qr` | Get QR code for pairing (PNG image) |
 | GET | `/session/qr/text` | Get QR code as text |
 | GET | `/session/pair-code/{phone}` | Get pair code for phone number |
-| GET | `/session/status` | Get session status |
+| GET | `/session/status` | Get session status (includes `passkeyStatus`) |
+| GET | `/session/passkey` | Get passkey verification state and WebAuthn challenge |
+| POST | `/session/passkey` | Submit the passkey assertion |
+| POST | `/session/passkey/request` | Request a passkey challenge (passkey-only linking) |
+| POST | `/session/passkey/confirm` | Confirm passkey pairing code (compatibility; sent automatically) |
 | POST | `/session/logout` | Logout from WhatsApp |
 | POST | `/session/flush-history` | Flush cached history sync messages |
 

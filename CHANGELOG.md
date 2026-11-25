@@ -4,9 +4,39 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [3.0.0]
+## [3.2.0] - 2026-11-25
 
-Added optional Click-to-WhatsApp adReferral projection for text/media messages and event/history schemas, with tests. Shared context projection now also preserves media ephemeral expiration. Updated OSS wiki examples, configuration and upgrade guidance. Not included in the published 2.1.0 image.
+### Added
+
+- **Passkey pairing** — some WhatsApp accounts now require the owner's passkey (WebAuthn) to link a companion device. New endpoints: `GET /session/passkey` (current step and the WebAuthn challenge to sign on `https://web.whatsapp.com`), `POST /session/passkey` (submit `credential.toJSON()`; `type`, `origin` and `challenge` are checked locally before forwarding), `POST /session/passkey/request` (ask WhatsApp for a challenge directly, which also allows linking with no QR at all) and `POST /session/passkey/confirm` (compatibility only — the confirmation is sent automatically). `GET /session/status` now reports `passkeyStatus`. While a step is pending, `GET /session/qr`, `GET /session/qr/text` and `GET /session/pair-code/{phone}` return `409` instead of disconnecting the session, and QR rotation is paused
+- `verifiedName` on `GET /users/{phone}/profile` for verified WhatsApp Business accounts; `isVerified` is no longer always `false`
+- `whatsmeow.sendTimeout` (`WSAPI_WHATSMEOW_SEND_TIMEOUT`, default `20s`) bounds how long a send waits for WhatsApp's acknowledgement
+- History sync chunks are logged at info level with their type, order, progress, compressed size and conversation count
+
+### Changed
+
+- Groups can be created with only the paired account by omitting `participants` or passing an empty array to `POST /groups`
+- When an instance has history sync off, pairing asks the phone for 1 day / 10 MB of history instead of the full history. Already paired devices are unaffected
+- `DELETE /admin/instances/{id}` runs on its own 2-minute deadline (30 seconds for the WhatsApp logout), so it completes even if the caller times out. A delete that arrives while another is running returns `409` instead of `404`; retry until it returns `204`
+- Debug logs attach event payloads only up to 16 KiB and log the size above that
+- **whatsmeow updated to 2026-11-25**, plus minor dependency updates. whatsmeow migrates `whatsmeow_device` from schema 15 to 16 on first boot; back up the session database before upgrading. Encrypted contact statuses (sent by Android since early November) are no longer dropped and now arrive as message events. The blocklist resolves phone numbers from the server response
+
+### Fixed
+
+- Sends and chat picture lookups waited up to whatsmeow's 75s fallback when WhatsApp never acknowledged; they now fail at `sendTimeout` with a named error
+- `POST /session/flush-history` loaded a chat's whole cached backlog into memory; rows are now streamed
+- An app state full sync (e.g. right after pairing) replayed every past "delete for me" and star action as live `message_delete` / `message_star` events
+- `replyTo.sender.isMe` is now `true` when a contact replies to a message sent by the paired account
+
+## [3.0.0] - 2026-09-28
+
+### Added
+
+- **Click-to-WhatsApp ad attribution** — message events carry an `adReferral` object when a contact writes after clicking a Meta ad (`ctwaClid`, `sourceType`, `sourceId`, `sourceUrl`, `sourceApp`, `title`, `body`, `mediaType`, `thumbnailUrl`, `conversionSource`, `showAdAttribution`). Only emitted when the message carries real attribution data
+
+### Changed
+
+- Context info projection is shared by every message type — media messages now report `ephemeralExpiration`
 
 ## [2.1.0] - 2026-09-15
 

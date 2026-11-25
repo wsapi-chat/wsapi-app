@@ -222,13 +222,35 @@ func (m *Manager) CreateInstance(ctx context.Context, id string, cfg config.Inst
 	return inst, nil
 }
 
+// Bounds for a delete once it has started. They replace the caller's deadline:
+// see DeleteInstance.
+const (
+	deleteTimeout = 2 * time.Minute
+	logoutTimeout = 30 * time.Second
+)
+
+// ErrDeleteInProgress means another delete of the same instance is still
+// running. The caller should retry later: once that delete lands, a retry
+// returns success.
+var ErrDeleteInProgress = errors.New("instance is being deleted")
+
 // DeleteInstance removes an instance from memory and persistent storage.
+//
+// The delete runs on its own deadline, not the caller's. Once teardown has
+// started, giving up halfway is the worst outcome: the publisher is closed and
+// the device may be gone, but the row and the map entry survive, so the
+// instance still looks alive and nothing retries the delete. A caller that
+// times out (it may give up after a few seconds, and a WhatsApp logout can
+// take longer) has stopped listening; the delete still has to finish.
 func (m *Manager) DeleteInstance(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), deleteTimeout)
+	defer cancel()
+
 	m.mu.Lock()
 	inst, present := m.instances[id]
 	if present && inst.deleting {
 		m.mu.Unlock()
-		return fmt.Errorf("instance %s is being deleted", id)
+		return fmt.Errorf("%w: %s", ErrDeleteInProgress, id)
 	}
 	if present {
 		inst.deleting = true
@@ -268,7 +290,12 @@ func (m *Manager) teardownAndDelete(ctx context.Context, id string, inst *Instan
 		if inst.Service != nil {
 			wasLoggedIn = inst.Service.IsLoggedIn()
 			if wasLoggedIn {
-				if err := inst.Service.Session.Logout(ctx); err != nil {
+				// Bounded separately so a stalled logout still leaves time
+				// for the store delete below.
+				logoutCtx, cancelLogout := context.WithTimeout(ctx, logoutTimeout)
+				err := inst.Service.Session.Logout(logoutCtx)
+				cancelLogout()
+				if err != nil {
 					inst.Logger.Warn("logout before delete failed, forcing disconnect", "error", err)
 					inst.Service.DeleteDevice()
 				}
@@ -529,11 +556,15 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 	dedup := inst.Dedup
 
 	waInstLogger := m.waLogger.With("instanceId", id)
-	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore, m.cfg.MediaMaxFileSizeBytes(), m.mediaDownloadSlots)
+	svc, err := whatsapp.NewService(ctx, m.container, deviceID, instLogger, waInstLogger, m.chatStore, m.contactStore, m.historySyncStore, m.cfg.MediaMaxFileSizeBytes(), m.mediaDownloadSlots, m.cfg.Whatsmeow.SendTimeoutDuration())
 	if err != nil {
 		return fmt.Errorf("create whatsapp service: %w", err)
 	}
 	svc.SetPairClient(m.cfg.Whatsmeow.PairClientType, m.cfg.Whatsmeow.PairClientOS)
+	// Read at pairing time, so a settings change before pairing is honoured.
+	svc.LimitHistoryUnless(func() bool {
+		return inst.Config.HistorySync != nil && *inst.Config.HistorySync
+	})
 	if n := m.cfg.Whatsmeow.MaxParallelRetryReceipts; n > 0 {
 		svc.SetMaxParallelRetryReceipts(n)
 	}
@@ -556,6 +587,16 @@ func (m *Manager) initService(ctx context.Context, inst *Instance, deviceID stri
 		if ourJID := svc.GetDeviceJID(); ourJID != "" {
 			switch e := evt.(type) {
 			case *waEvents.HistorySync:
+				// Chunk sizes drive memory use (whatsmeow inflates each one fully);
+				// logged so an OOM during pairing can be traced to its payload.
+				instLogger.Info("history sync chunk received",
+					"syncType", e.Data.GetSyncType().String(),
+					"chunkOrder", e.Data.GetChunkOrder(),
+					"progress", e.Data.GetProgress(),
+					"compressedBytes", e.Notification.GetFileLength(),
+					"conversations", len(e.Data.GetConversations()),
+					"historySyncEnabled", historySyncEnabled,
+				)
 				if e.Data.SyncType != nil {
 					syncType := *e.Data.SyncType
 					if syncType == waHistorySync.HistorySync_INITIAL_BOOTSTRAP ||

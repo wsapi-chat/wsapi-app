@@ -85,6 +85,17 @@ func (s *HistorySyncStore) ListChats(ctx context.Context, ourJID string) ([]stri
 // GetMessages returns the cached JSON message arrays for a specific chat,
 // ordered by insertion order. Only non-expired rows are returned.
 func (s *HistorySyncStore) GetMessages(ctx context.Context, ourJID, chatJID string) ([]string, error) {
+	var msgs []string
+	err := s.ForEachMessages(ctx, ourJID, chatJID, func(m string) error {
+		msgs = append(msgs, m)
+		return nil
+	})
+	return msgs, err
+}
+
+// ForEachMessages streams the cached JSON message arrays for a chat, one row
+// at a time, so a large backlog never has to fit in memory at once.
+func (s *HistorySyncStore) ForEachMessages(ctx context.Context, ourJID, chatJID string, fn func(string) error) error {
 	q := `
 		SELECT messages FROM wsapi_history_sync_messages
 		WHERE our_jid = ? AND chat_jid = ? AND expire_at > ?
@@ -100,19 +111,20 @@ func (s *HistorySyncStore) GetMessages(ctx context.Context, ourJID, chatJID stri
 
 	rows, err := s.db.QueryContext(ctx, q, ourJID, chatJID, time.Now().UTC())
 	if err != nil {
-		return nil, fmt.Errorf("get history sync messages for %s: %w", chatJID, err)
+		return fmt.Errorf("get history sync messages for %s: %w", chatJID, err)
 	}
 	defer rows.Close() //nolint:errcheck
 
-	var msgs []string
 	for rows.Next() {
 		var m string
 		if err := rows.Scan(&m); err != nil {
-			return nil, fmt.Errorf("scan history sync message: %w", err)
+			return fmt.Errorf("scan history sync message: %w", err)
 		}
-		msgs = append(msgs, m)
+		if err := fn(m); err != nil {
+			return err
+		}
 	}
-	return msgs, rows.Err()
+	return rows.Err()
 }
 
 // DeleteAll removes all cached history sync rows for the given device.

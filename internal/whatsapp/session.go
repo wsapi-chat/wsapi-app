@@ -19,6 +19,8 @@ type SessionService struct {
 	logger         *slog.Logger
 	pairClientType string
 	pairClientOS   string
+
+	passkey passkeyTracker
 }
 
 // pairClientInfo holds the whatsmeow PairClientType, DeviceProps PlatformType,
@@ -140,6 +142,10 @@ func (s *SessionService) GenerateQRImage(ctx context.Context) ([]byte, error) {
 	if s.client.Store.ID != nil {
 		return nil, fmt.Errorf("device already registered")
 	}
+	if s.passkeyPending() {
+		return nil, ErrPasskeyPending
+	}
+	s.clearPasskey()
 
 	// Disconnect any existing connection first.
 	s.client.Disconnect()
@@ -197,6 +203,10 @@ func (s *SessionService) GenerateQRCode(ctx context.Context) (string, error) {
 	if s.client.Store.ID != nil {
 		return "", fmt.Errorf("device already registered")
 	}
+	if s.passkeyPending() {
+		return "", ErrPasskeyPending
+	}
+	s.clearPasskey()
 
 	s.client.Disconnect()
 
@@ -239,6 +249,10 @@ func (s *SessionService) GeneratePairCode(ctx context.Context, phone string) (st
 	if s.client.Store.ID != nil {
 		return "", fmt.Errorf("device already registered")
 	}
+	if s.passkeyPending() {
+		return "", ErrPasskeyPending
+	}
+	s.clearPasskey()
 
 	s.client.Disconnect()
 	_ = s.client.Connect()

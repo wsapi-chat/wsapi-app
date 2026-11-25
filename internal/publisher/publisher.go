@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	"github.com/wsapi-chat/wsapi-app/internal/config"
@@ -91,4 +92,17 @@ func (f *Factory) Close() error {
 		return f.redis.Close()
 	}
 	return nil
+}
+
+// maxLoggedEventData caps the payload attached to debug logs. Above it only the
+// size is logged: a history sync chunk can be megabytes, and every logged copy
+// is redacted and queued for export, which can exhaust the process's memory.
+const maxLoggedEventData = 16 << 10
+
+// eventDataAttr returns the payload as a log attribute, or its size if too large.
+func eventDataAttr(data []byte) slog.Attr {
+	if len(data) > maxLoggedEventData {
+		return slog.Int("eventDataBytes", len(data))
+	}
+	return slog.Any("eventData", json.RawMessage(data))
 }

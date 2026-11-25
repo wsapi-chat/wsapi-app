@@ -158,7 +158,7 @@ func (c *ContactService) BlockContact(ctx context.Context, contactID string) err
 	if err != nil {
 		return fmt.Errorf("invalid contact JID: %w", err)
 	}
-	_, err = c.client.UpdateBlocklist(ctx, jid, events.BlocklistChangeActionBlock)
+	_, err = c.client.UpdateBlocklist(ctx, jid, events.BlocklistChangeActionBlock, "")
 	return err
 }
 
@@ -168,20 +168,20 @@ func (c *ContactService) UnblockContact(ctx context.Context, contactID string) e
 	if err != nil {
 		return fmt.Errorf("invalid contact JID: %w", err)
 	}
-	_, err = c.client.UpdateBlocklist(ctx, jid, events.BlocklistChangeActionUnblock)
+	_, err = c.client.UpdateBlocklist(ctx, jid, events.BlocklistChangeActionUnblock, "")
 	return err
 }
 
 // GetBlocklist returns the list of blocked contacts.
 func (c *ContactService) GetBlocklist(ctx context.Context) ([]identity.Identity, error) {
-	blocklist, err := c.client.GetBlocklist(ctx)
+	blocklist, err := c.client.GetBlocklist(ctx, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blocklist: %w", err)
 	}
 	lids := c.client.Store.LIDs
-	result := make([]identity.Identity, 0, len(blocklist.JIDs))
-	for _, jid := range blocklist.JIDs {
-		result = append(result, identity.Resolve(ctx, jid, waTypes.EmptyJID, lids))
+	result := make([]identity.Identity, 0, len(blocklist.Items))
+	for _, item := range blocklist.Items {
+		result = append(result, identity.Resolve(ctx, item.LID, item.PN, lids))
 	}
 	return result, nil
 }

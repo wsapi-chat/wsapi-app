@@ -6,6 +6,8 @@ When a new device pairs with WhatsApp, the phone sends historical messages to th
 
 By default, history sync messages are **not** published as events — they are only used internally for chat tracking. When `historySync` is enabled for an instance, WSAPI caches the synced messages and lets you retrieve them on demand.
 
+> **Enable it before pairing.** How much history the phone sends is decided at pairing time. When `historySync` is off, WSAPI asks the phone for only 1 day / 10 MB of history to keep memory bounded; turning it on afterwards does not bring the full history back until the device is paired again.
+
 ## Enabling History Sync
 
 ### Via environment variable (applies to all instances)

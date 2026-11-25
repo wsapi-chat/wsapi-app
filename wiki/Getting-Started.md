@@ -105,6 +105,8 @@ curl http://localhost:8080/session/qr \
 # Open qr.png and scan with WhatsApp > Linked Devices > Link a Device
 ```
 
+> **Passkey accounts:** if WhatsApp asks for the owner's passkey after the scan, `GET /session/status` reports `passkeyStatus: required` and the QR endpoints return `409`. Fetch the challenge from `GET /session/passkey`, sign it with `navigator.credentials.get()` on `https://web.whatsapp.com`, and submit `credential.toJSON()` to `POST /session/passkey`. See the OpenAPI spec for the full flow.
+
 ### 4. Send a message
 
 ```bash
