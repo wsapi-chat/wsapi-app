@@ -22,6 +22,7 @@ type Config struct {
 	HTTPProxy                   string          `yaml:"httpProxy"`
 	MediaMaxFileSize            string          `yaml:"mediaMaxFileSize"`
 	MediaMaxConcurrentDownloads int             `yaml:"mediaMaxConcurrentDownloads"`
+	MediaAllowPrivateURLs       bool            `yaml:"mediaAllowPrivateUrls"` // let media URLs reach loopback/private/link-local addresses (default: false)
 	Redis                       *RedisConfig    `yaml:"redis,omitempty"`
 }
 
@@ -231,6 +232,9 @@ func applyEnv(cfg *Config) {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 			cfg.MediaMaxConcurrentDownloads = n
 		}
+	}
+	if v := os.Getenv("WSAPI_MEDIA_ALLOW_PRIVATE_URLS"); v != "" {
+		cfg.MediaAllowPrivateURLs = strings.EqualFold(v, "true") || v == "1"
 	}
 
 	// Event publishing

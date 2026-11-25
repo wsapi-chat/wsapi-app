@@ -3940,7 +3940,7 @@ components:
         url:
           type: string
           format: uri
-          description: URL to download the media from (mutually exclusive with `data`, max 50 MB)
+          description: URL to download the media from (mutually exclusive with `data`, max 50 MB). Must be http or https; private, loopback and link-local addresses are rejected with 400 unless `WSAPI_MEDIA_ALLOW_PRIVATE_URLS` is enabled
         mimeType:
           type: string
           description: MIME type of the file (auto-detected if omitted)
@@ -3986,7 +3986,7 @@ components:
         url:
           type: string
           format: uri
-          description: URL to download the sticker from (mutually exclusive with `data`, max 50 MB)
+          description: URL to download the sticker from (mutually exclusive with `data`, max 50 MB). Must be http or https; private, loopback and link-local addresses are rejected with 400 unless `WSAPI_MEDIA_ALLOW_PRIVATE_URLS` is enabled
         isAnimated:
           type: boolean
         mentions:
@@ -4870,7 +4870,7 @@ components:
         url:
           type: string
           format: uri
-          description: URL to download the media from (mutually exclusive with `data`, max 50 MB)
+          description: URL to download the media from (mutually exclusive with `data`, max 50 MB). Must be http or https; private, loopback and link-local addresses are rejected with 400 unless `WSAPI_MEDIA_ALLOW_PRIVATE_URLS` is enabled
         mimeType:
           type: string
           description: MIME type of the media

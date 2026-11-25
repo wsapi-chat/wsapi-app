@@ -50,6 +50,7 @@ logging:
 httpProxy: ""                # HTTP proxy URL for outbound requests
 
 mediaMaxConcurrentDownloads: 2 # process-wide media download limit; 0 disables it
+mediaAllowPrivateUrls: false # let media URLs reach private/internal addresses
 
 instanceMode: "single"       # "single" or "multi"
 
@@ -91,8 +92,11 @@ All variables are optional — defaults are used when not set.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `WSAPI_MEDIA_MAX_CONCURRENT_DOWNLOADS` | Process-wide concurrent media decrypt limit; `0` disables the limit | `2` |
+| `WSAPI_MEDIA_ALLOW_PRIVATE_URLS` | Let the `url` field of media sends reach loopback, private (RFC 1918, `fc00::/7`), link-local (incl. `169.254.169.254`), CGNAT, unspecified and multicast addresses. Enable only if you send media from a LAN server and every API caller is trusted | `false` |
 
 Each media download has a two-minute timeout. `instanceDefaults.publishEvents` and per-instance `publishEvents` suppress data events when false; system events still pass. This setting has no dedicated environment variable.
+
+Media `url` fields must be `http` or `https`. By default, URLs that resolve to the addresses listed for `WSAPI_MEDIA_ALLOW_PRIVATE_URLS` are rejected with `400 url resolves to a private or internal address`. The check runs on the IP the hostname resolves to at connect time, on every redirect. With `WSAPI_HTTP_PROXY` set, the target host is resolved and checked before each request, but the proxy resolves it again, so protection against DNS rebinding depends on the proxy's own egress rules.
 
 ### Database
 

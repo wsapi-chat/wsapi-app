@@ -26,3 +26,7 @@ Before starting the new binary or image, back up the session database: on first 
 - Instances with history sync off request only 1 day / 10 MB of history when pairing. Enable `historySync` before pairing if you need the full history.
 
 Cloud Account APIs and SSE delivery are separate Cloud features. The OSS administrative API remains `/admin/instances`; event delivery is via webhooks or Redis Streams.
+
+## Unreleased
+
+- Media `url` fields that resolve to loopback, private, link-local, CGNAT, unspecified or multicast addresses are rejected with `400`, and only `http`/`https` URLs are accepted. If you send media from a server on your own network, set `WSAPI_MEDIA_ALLOW_PRIVATE_URLS=true` (`mediaAllowPrivateUrls: true`) and make sure every API caller is trusted.
